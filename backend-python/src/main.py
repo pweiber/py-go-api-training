@@ -1,12 +1,15 @@
 """
 Main FastAPI application entry point.
-
 """
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-# TODO: Import routers from api.v1.endpoints as you create them
-# from src.api.v1.endpoints import books, auth, users
+from src.core.config import settings
+from src.core.database import init_db
+from src.api.v1.endpoints import books
+
+# Initialize database tables
+init_db()
 
 app = FastAPI(
     title="Intern Training API",
@@ -17,10 +20,9 @@ app = FastAPI(
 )
 
 # CORS middleware configuration
-# TODO: Update allowed origins based on your frontend URL
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:8000"],
+    allow_origins=settings.ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -36,17 +38,10 @@ async def health_check():
 @app.get("/")
 async def root():
     """Root endpoint with API information."""
-    return {
-        "message": "Welcome to the Intern Training API",
-        "version": "1.0.0",
-        "docs": "/docs",
-        "health": "/health"
-    }
+    return {"message": "Book Store API"}
 
-# TODO: Include routers as you create them
-# app.include_router(books.router, prefix="/api/v1", tags=["books"])
-# app.include_router(auth.router, prefix="/api/v1/auth", tags=["authentication"])
-# app.include_router(users.router, prefix="/api/v1/users", tags=["users"])
+# Include routers
+app.include_router(books.router, tags=["books"])
 
 if __name__ == "__main__":
     import uvicorn
