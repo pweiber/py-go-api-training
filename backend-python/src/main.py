@@ -8,8 +8,6 @@ from src.core.config import settings
 from src.core.database import init_db
 from src.api.v1.endpoints import books
 
-# Initialize database tables
-init_db()
 
 app = FastAPI(
     title="Intern Training API",
@@ -45,4 +43,6 @@ app.include_router(books.router, tags=["books"])
 
 if __name__ == "__main__":
     import uvicorn
+    # Initialize database tables when running directly
+    init_db()
     uvicorn.run(app, host="0.0.0.0", port=8000, reload=True)
