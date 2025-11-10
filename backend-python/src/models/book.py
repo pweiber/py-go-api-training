@@ -22,7 +22,7 @@ class Book(Base):
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     title = Column(String(255), nullable=False, index=True)
     author = Column(String(255), nullable=False)
-    isbn = Column(String(13), unique=True, nullable=False, index=True)
+    isbn = Column(String(17), unique=True, nullable=False, index=True)  # Increased to accommodate ISBN-13 with normalization
     published_date = Column(Date, nullable=False)
     description = Column(Text, nullable=True)
     
