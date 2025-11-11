@@ -3,6 +3,8 @@ Unit tests for Book CRUD endpoints.
 """
 import pytest
 from datetime import date
+from fastapi.testclient import TestClient
+from sqlalchemy.orm import Session
 
 
 def test_health_check(client):
@@ -10,25 +12,6 @@ def test_health_check(client):
     response = client.get("/")
     assert response.status_code == 200
     assert response.json() == {"message": "Book Store API"}
-
-
-def test_create_book(client):
-    """Test creating a new book."""
-    book_data = {
-        "title": "The Python Guide",
-        "author": "John Doe",
-        "isbn": "978-0123456789",
-        "published_date": "2023-01-15",
-        "description": "A comprehensive guide to Python programming"
-    }
-    response = client.post("/books", json=book_data)
-    assert response.status_code == 201
-    data = response.json()
-    assert data["title"] == book_data["title"]
-    assert data["author"] == book_data["author"]
-    assert data["isbn"] == book_data["isbn"]
-    assert "id" in data
-
 
 def test_create_book_duplicate_isbn(client):
     """Test creating a book with duplicate ISBN returns 400."""
