@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from src.core.config import settings
 from src.core.database import init_db
-from src.api.v1.endpoints import books
+from src.api.v1.endpoints import books, auth
 
 
 app = FastAPI(
@@ -26,6 +26,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize database tables on startup."""
+    init_db()
+
 # Health check endpoint
 @app.get("/health")
 async def health_check():
@@ -39,6 +45,7 @@ async def root():
     return {"message": "Book Store API"}
 
 # Include routers
+app.include_router(auth.router, tags=["authentication"])
 app.include_router(books.router, tags=["books"])
 
 if __name__ == "__main__":
