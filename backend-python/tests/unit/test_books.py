@@ -15,6 +15,19 @@ def test_health_check(client):
 
 def test_create_book_duplicate_isbn(client):
     """Test creating a book with duplicate ISBN returns 400."""
+    # Register and login to get token
+    client.post("/register", json={
+        "email": "booktest@example.com",
+        "password": "testpass123",
+        "role": "user"
+    })
+    login_response = client.post("/login", json={
+        "email": "booktest@example.com",
+        "password": "testpass123"
+    })
+    token = login_response.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
     book_data = {
         "title": "Test Book",
         "author": "Test Author",
@@ -23,17 +36,30 @@ def test_create_book_duplicate_isbn(client):
         "description": "Test description"
     }
     # Create first book
-    response = client.post("/books", json=book_data)
+    response = client.post("/books", json=book_data, headers=headers)
     assert response.status_code == 201
     
     # Try to create duplicate
-    response = client.post("/books", json=book_data)
+    response = client.post("/books", json=book_data, headers=headers)
     assert response.status_code == 400
     assert "already exists" in response.json()["detail"]
 
 
 def test_get_all_books(client):
     """Test getting all books."""
+    # Register and login to get token
+    client.post("/register", json={
+        "email": "getbooks@example.com",
+        "password": "testpass123",
+        "role": "user"
+    })
+    login_response = client.post("/login", json={
+        "email": "getbooks@example.com",
+        "password": "testpass123"
+    })
+    token = login_response.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
     # Create a test book first
     book_data = {
         "title": "Test Book",
@@ -42,9 +68,9 @@ def test_get_all_books(client):
         "published_date": "2023-01-15",
         "description": "Test description"
     }
-    client.post("/books", json=book_data)
-    
-    response = client.get("/books")
+    client.post("/books", json=book_data, headers=headers)
+
+    response = client.get("/books", headers=headers)
     assert response.status_code == 200
     data = response.json()
     assert isinstance(data, list)
@@ -53,6 +79,19 @@ def test_get_all_books(client):
 
 def test_get_book_by_id(client):
     """Test getting a specific book by ID."""
+    # Register and login to get token
+    client.post("/register", json={
+        "email": "getbyid@example.com",
+        "password": "testpass123",
+        "role": "user"
+    })
+    login_response = client.post("/login", json={
+        "email": "getbyid@example.com",
+        "password": "testpass123"
+    })
+    token = login_response.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
     # Create a test book
     book_data = {
         "title": "Specific Book",
@@ -61,10 +100,10 @@ def test_get_book_by_id(client):
         "published_date": "2023-01-15",
         "description": "Specific description"
     }
-    create_response = client.post("/books", json=book_data)
+    create_response = client.post("/books", json=book_data, headers=headers)
     book_id = create_response.json()["id"]
     
-    response = client.get(f"/books/{book_id}")
+    response = client.get(f"/books/{book_id}", headers=headers)
     assert response.status_code == 200
     data = response.json()
     assert data["id"] == book_id
@@ -80,6 +119,19 @@ def test_get_book_by_id_not_found(client):
 
 def test_update_book(client):
     """Test updating a book."""
+    # Register and login to get token
+    client.post("/register", json={
+        "email": "updatebook@example.com",
+        "password": "testpass123",
+        "role": "user"
+    })
+    login_response = client.post("/login", json={
+        "email": "updatebook@example.com",
+        "password": "testpass123"
+    })
+    token = login_response.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
     # Create a test book
     book_data = {
         "title": "Original Title",
@@ -88,7 +140,7 @@ def test_update_book(client):
         "published_date": "2023-01-15",
         "description": "Original description"
     }
-    create_response = client.post("/books", json=book_data)
+    create_response = client.post("/books", json=book_data, headers=headers)
     book_id = create_response.json()["id"]
     
     # Update the book
@@ -96,7 +148,7 @@ def test_update_book(client):
         "title": "Updated Title",
         "description": "Updated description"
     }
-    response = client.put(f"/books/{book_id}", json=update_data)
+    response = client.put(f"/books/{book_id}", json=update_data, headers=headers)
     assert response.status_code == 200
     data = response.json()
     assert data["title"] == "Updated Title"
@@ -113,6 +165,19 @@ def test_update_book_not_found(client):
 
 def test_delete_book(client):
     """Test deleting a book."""
+    # Register and login as admin to get token
+    client.post("/register", json={
+        "email": "deletebook@example.com",
+        "password": "testpass123",
+        "role": "admin"
+    })
+    login_response = client.post("/login", json={
+        "email": "deletebook@example.com",
+        "password": "testpass123"
+    })
+    token = login_response.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
     # Create a test book
     book_data = {
         "title": "Book to Delete",
@@ -121,21 +186,34 @@ def test_delete_book(client):
         "published_date": "2023-01-15",
         "description": "Will be deleted"
     }
-    create_response = client.post("/books", json=book_data)
+    create_response = client.post("/books", json=book_data, headers=headers)
     book_id = create_response.json()["id"]
     
     # Delete the book
-    response = client.delete(f"/books/{book_id}")
+    response = client.delete(f"/books/{book_id}", headers=headers)
     assert response.status_code == 200
     assert response.json() == {"message": "Book deleted successfully"}
     
     # Verify book is deleted
-    get_response = client.get(f"/books/{book_id}")
+    get_response = client.get(f"/books/{book_id}", headers=headers)
     assert get_response.status_code == 404
 
 
 def test_delete_book_not_found(client):
     """Test deleting a non-existent book returns 404."""
-    response = client.delete("/books/99999")
+    # Register and login as admin to get token
+    client.post("/register", json={
+        "email": "deletenotfound@example.com",
+        "password": "testpass123",
+        "role": "admin"
+    })
+    login_response = client.post("/login", json={
+        "email": "deletenotfound@example.com",
+        "password": "testpass123"
+    })
+    token = login_response.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    response = client.delete("/books/99999", headers=headers)
     assert response.status_code == 404
 
