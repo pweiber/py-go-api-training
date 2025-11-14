@@ -1,89 +1,3 @@
-    Example:
-        @app.get("/protected")
-        async def protected_route(current_user: User = Depends(get_current_user)):
-            return {"message": f"Hello {current_user.email}"}
-    """
-    token = credentials.credentials
-    token_data = verify_token(token)
-    
-    user = db.query(User).filter(User.email == token_data.email).first()
-    
-    if user is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    
-    if not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Inactive user"
-        )
-    
-    return user
-
-
-async def get_admin_user(current_user: User = Depends(get_current_user)) -> User:
-    """
-    Verify that the current user has admin role.
-    
-    This is a FastAPI dependency that ensures only admin users can access
-    certain routes.
-    
-    Args:
-        current_user: Current authenticated user from get_current_user dependency
-        
-    Returns:
-        User object if user is an admin
-        
-    Raises:
-        HTTPException: 403 if user is not an admin
-        
-    Example:
-        @app.delete("/books/{id}")
-        async def delete_book(
-            id: int,
-            admin_user: User = Depends(get_admin_user)
-        ):
-            # Only admins can delete books
-            pass
-    """
-    if current_user.role != UserRole.ADMIN:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not enough permissions. Admin role required."
-        )
-    
-    return current_user
-
-
-def authenticate_user(db: Session, email: str, password: str) -> Optional[User]:
-    """
-    Authenticate a user by email and password.
-    
-    Args:
-        db: Database session
-        email: User email address
-        password: Plain text password
-        
-    Returns:
-        User object if authentication successful, None otherwise
-        
-    Example:
-        >>> user = authenticate_user(db, "user@example.com", "password123")
-        >>> user.email if user else None
-        'user@example.com'
-    """
-    user = db.query(User).filter(User.email == email).first()
-    
-    if not user:
-        return None
-    
-    if not verify_password(password, user.hashed_password):
-        return None
-    
-    return user
 """
 Authentication utilities for JWT token generation and validation.
 Includes password hashing and user verification.
@@ -242,4 +156,90 @@ async def get_current_user(
         HTTPException: 401 if token is invalid or user not found
         HTTPException: 403 if user is inactive
         
+    Example:
+        @app.get("/protected")
+        async def protected_route(current_user: User = Depends(get_current_user)):
+            return {"message": f"Hello {current_user.email}"}
+    """
+    token = credentials.credentials
+    token_data = verify_token(token)
+
+    user = db.query(User).filter(User.email == token_data.email).first()
+
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Inactive user"
+        )
+
+    return user
+
+
+async def get_admin_user(current_user: User = Depends(get_current_user)) -> User:
+    """
+    Verify that the current user has admin role.
+
+    This is a FastAPI dependency that ensures only admin users can access
+    certain routes.
+
+    Args:
+        current_user: Current authenticated user from get_current_user dependency
+
+    Returns:
+        User object if user is an admin
+
+    Raises:
+        HTTPException: 403 if user is not an admin
+
+    Example:
+        @app.delete("/books/{id}")
+        async def delete_book(
+            id: int,
+            admin_user: User = Depends(get_admin_user)
+        ):
+            # Only admins can delete books
+            pass
+    """
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not enough permissions. Admin role required."
+        )
+
+    return current_user
+
+
+def authenticate_user(db: Session, email: str, password: str) -> Optional[User]:
+    """
+    Authenticate a user by email and password.
+
+    Args:
+        db: Database session
+        email: User email address
+        password: Plain text password
+
+    Returns:
+        User object if authentication successful, None otherwise
+
+    Example:
+        >>> user = authenticate_user(db, "user@example.com", "password123")
+        >>> user.email if user else None
+        'user@example.com'
+    """
+    user = db.query(User).filter(User.email == email).first()
+
+    if not user:
+        return None
+
+    if not verify_password(password, user.hashed_password):
+        return None
+
+    return user
 
