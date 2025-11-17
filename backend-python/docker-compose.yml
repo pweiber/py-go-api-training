@@ -33,18 +33,18 @@ services:
       ENVIRONMENT: ${ENVIRONMENT:-development}
     ports:
       - "${API_PORT:-8000}:8000"
-    depends_on:
-      db:
-        condition: service_healthy
     volumes:
       - ./src:/app/src
     command: uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
+    depends_on:
+      db:
+        condition: service_healthy
     networks:
       - app-network
-
-volumes:
-  postgres_data:
 
 networks:
   app-network:
     driver: bridge
+
+volumes:
+  postgres_data:
