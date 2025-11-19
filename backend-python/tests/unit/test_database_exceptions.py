@@ -1,0 +1,313 @@
+"""
+Unit tests for database exception handling.
+
+These tests verify that database errors are properly caught and handled,
+returning appropriate HTTP status codes and user-friendly error messages.
+"""
+import pytest
+from fastapi.testclient import TestClient
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError, OperationalError
+from unittest.mock import patch, MagicMock, PropertyMock
+from datetime import date
+
+
+class TestIntegrityErrorHandling:
+    """Test handling of database integrity errors."""
+    
+    def test_create_book_duplicate_isbn_precheck(self, client):
+        """Test that duplicate ISBN is caught by pre-check (fast path)."""
+        book_data = {
+            "title": "Test Book",
+            "author": "Test Author",
+            "isbn": "978-1111111111",
+            "published_date": "2023-01-15",
+            "description": "Test description"
+        }
+        
+        # Create first book
+        response1 = client.post("/books", json=book_data)
+        assert response1.status_code == 201
+        
+        # Try to create duplicate - should fail at pre-check
+        response2 = client.post("/books", json=book_data)
+        assert response2.status_code == 400
+        assert "already exists" in response2.json()["detail"].lower()
+    
+    def test_create_book_integrity_error_race_condition(self, client):
+        """Test IntegrityError during commit is handled (simulates race condition)."""
+        book_data = {
+            "title": "Race Condition Book",
+            "author": "Test Author",
+            "isbn": "978-9999999999",
+            "published_date": "2023-01-15",
+            "description": "Test"
+        }
+        
+        # Mock the commit to raise IntegrityError
+        with patch('sqlalchemy.orm.Session.commit') as mock_commit:
+            # Create mock original exception
+            mock_orig = MagicMock()
+            mock_orig.__str__ = MagicMock(return_value="duplicate key value violates unique constraint books_isbn_key")
+            
+            # Create IntegrityError with the mock
+            integrity_error = IntegrityError("statement", "params", mock_orig)
+            mock_commit.side_effect = integrity_error
+            
+            response = client.post("/books", json=book_data)
+            
+            # Should return 409 Conflict
+            assert response.status_code == 409
+            assert "isbn" in response.json()["detail"].lower() or "exists" in response.json()["detail"].lower()
+    
+    def test_update_book_duplicate_isbn_integrity_error(self, client):
+        """Test that duplicate ISBN during update is handled."""
+        # Create two books
+        book1_data = {
+            "title": "Book 1",
+            "author": "Author 1",
+            "isbn": "978-1111111112",
+            "published_date": "2023-01-15",
+        }
+        book2_data = {
+            "title": "Book 2",
+            "author": "Author 2",
+            "isbn": "978-2222222222",
+            "published_date": "2023-01-15",
+        }
+        
+        response1 = client.post("/books", json=book1_data)
+        response2 = client.post("/books", json=book2_data)
+        
+        book2_id = response2.json()["id"]
+        
+        # Try to update book2 with book1's ISBN
+        update_data = {"isbn": "978-1111111112"}
+        response = client.put(f"/books/{book2_id}", json=update_data)
+        
+        assert response.status_code == 400
+        assert "exists" in response.json()["detail"].lower()
+
+
+class TestDatabaseErrorHandling:
+    """Test handling of general database errors."""
+    
+    def test_create_book_database_error(self, client):
+        """Test that generic database errors return 500."""
+        book_data = {
+            "title": "Test Book",
+            "author": "Test Author",
+            "isbn": "978-8888888888",
+            "published_date": "2023-01-15",
+        }
+        
+        # Mock commit to raise a generic SQLAlchemyError
+        with patch('sqlalchemy.orm.Session.commit') as mock_commit:
+            from sqlalchemy.exc import DatabaseError
+            mock_commit.side_effect = DatabaseError("statement", "params", "database connection lost")
+            
+            response = client.post("/books", json=book_data)
+            
+            # Should return 500 Internal Server Error
+            assert response.status_code == 500
+            assert "error occurred" in response.json()["detail"].lower()
+    
+    def test_get_books_database_error(self, client):
+        """Test that database errors during query are handled."""
+        with patch('sqlalchemy.orm.Query.all') as mock_all:
+            mock_all.side_effect = SQLAlchemyError("Database error")
+            
+            response = client.get("/books")
+            
+            assert response.status_code == 500
+            assert "error occurred" in response.json()["detail"].lower()
+
+
+class TestDeleteConstraints:
+    """Test handling of delete operations with constraints."""
+    
+    def test_delete_book_foreign_key_constraint(self, client):
+        """Test that foreign key constraint violations are handled properly."""
+        # Create a book
+        book_data = {
+            "title": "Book with References",
+            "author": "Author",
+            "isbn": "978-5555555555",
+            "published_date": "2023-01-15",
+        }
+        create_response = client.post("/books", json=book_data)
+        book_id = create_response.json()["id"]
+        
+        # Mock the commit to simulate foreign key constraint error
+        with patch('sqlalchemy.orm.Session.commit') as mock_commit:
+            mock_orig = MagicMock()
+            mock_orig.__str__ = MagicMock(return_value="foreign key constraint fails")
+            
+            integrity_error = IntegrityError("statement", "params", mock_orig)
+            mock_commit.side_effect = integrity_error
+            
+            response = client.delete(f"/books/{book_id}")
+            
+            # Should return 409 Conflict
+            assert response.status_code == 409
+            assert "referenced" in response.json()["detail"].lower() or "constraint" in response.json()["detail"].lower()
+    
+    def test_delete_nonexistent_book(self, client):
+        """Test deleting a book that doesn't exist returns 404."""
+        response = client.delete("/books/99999")
+        
+        assert response.status_code == 404
+        assert "not found" in response.json()["detail"].lower()
+
+
+class TestConcurrentOperations:
+    """Test handling of concurrent database operations."""
+    
+    def test_concurrent_create_same_isbn(self, client):
+        """Test that concurrent creates with same ISBN are handled."""
+        book_data = {
+            "title": "Concurrent Book",
+            "author": "Author",
+            "isbn": "978-4444444444",
+            "published_date": "2023-01-15",
+        }
+        
+        # First request succeeds
+        response1 = client.post("/books", json=book_data)
+        assert response1.status_code == 201
+        
+        # Second request should fail
+        response2 = client.post("/books", json=book_data)
+        assert response2.status_code in [400, 409]
+        assert "exists" in response2.json()["detail"].lower()
+
+
+class TestErrorResponses:
+    """Test that error responses have correct structure."""
+    
+    def test_error_response_structure(self, client):
+        """Test that error responses include expected fields."""
+        book_data = {
+            "title": "Test Book",
+            "author": "Test Author",
+            "isbn": "978-6666666666",
+            "published_date": "2023-01-15",
+        }
+        
+        # Create book
+        client.post("/books", json=book_data)
+        
+        # Try to create duplicate
+        response = client.post("/books", json=book_data)
+        
+        assert response.status_code in [400, 409]
+        response_data = response.json()
+        
+        # Should have 'detail' field
+        assert "detail" in response_data
+        assert isinstance(response_data["detail"], str)
+        assert len(response_data["detail"]) > 0
+    
+    def test_404_error_structure(self, client):
+        """Test that 404 errors have correct structure."""
+        response = client.get("/books/99999")
+        
+        assert response.status_code == 404
+        response_data = response.json()
+        
+        assert "detail" in response_data
+        assert "not found" in response_data["detail"].lower()
+
+
+class TestRollbackBehavior:
+    """Test that failed operations properly roll back."""
+    
+    def test_failed_create_rolls_back(self, client):
+        """Test that a failed create operation doesn't leave partial data."""
+        book_data = {
+            "title": "Rollback Test Book",
+            "author": "Test Author",
+            "isbn": "978-7777777777",
+            "published_date": "2023-01-15",
+        }
+        
+        # Create book successfully
+        response1 = client.post("/books", json=book_data)
+        assert response1.status_code == 201
+        
+        # Try to create duplicate (should fail and rollback)
+        response2 = client.post("/books", json=book_data)
+        assert response2.status_code in [400, 409]
+        
+        # Verify only one book exists with this ISBN
+        all_books_response = client.get("/books")
+        all_books = all_books_response.json()
+        
+        books_with_isbn = [b for b in all_books if b["isbn"] == book_data["isbn"]]
+        assert len(books_with_isbn) == 1  # Only the first one should exist
+
+
+class TestGetOperationsErrorHandling:
+    """Test error handling for GET operations."""
+    
+    def test_get_book_by_id_not_found(self, client):
+        """Test getting a non-existent book returns 404."""
+        response = client.get("/books/99999")
+        assert response.status_code == 404
+        assert "not found" in response.json()["detail"].lower()
+    
+    def test_get_book_database_error(self, client):
+        """Test that database errors during single book retrieval are handled."""
+        # Create a book first
+        book_data = {
+            "title": "Test Book for Error",
+            "author": "Test Author",
+            "isbn": "978-3333333333",
+            "published_date": "2023-01-15",
+        }
+        create_response = client.post("/books", json=book_data)
+        book_id = create_response.json()["id"]
+        
+        # Mock the query to raise an error
+        with patch('sqlalchemy.orm.Query.first') as mock_first:
+            mock_first.side_effect = SQLAlchemyError("Database error")
+            
+            response = client.get(f"/books/{book_id}")
+            
+            assert response.status_code == 500
+            assert "error occurred" in response.json()["detail"].lower()
+
+
+class TestUpdateOperationsErrorHandling:
+    """Test error handling for UPDATE operations."""
+    
+    def test_update_book_not_found(self, client):
+        """Test updating a non-existent book returns 404."""
+        update_data = {"title": "Updated Title"}
+        response = client.put("/books/99999", json=update_data)
+        
+        assert response.status_code == 404
+        assert "not found" in response.json()["detail"].lower()
+    
+    def test_update_book_database_error(self, client):
+        """Test that database errors during update are handled."""
+        # Create a book
+        book_data = {
+            "title": "Original Title",
+            "author": "Author",
+            "isbn": "978-1234567890",
+            "published_date": "2023-01-15",
+        }
+        create_response = client.post("/books", json=book_data)
+        book_id = create_response.json()["id"]
+        
+        # Mock commit to raise error
+        with patch('sqlalchemy.orm.Session.commit') as mock_commit:
+            from sqlalchemy.exc import DatabaseError
+            mock_commit.side_effect = DatabaseError("statement", "params", "connection error")
+            
+            update_data = {"title": "New Title"}
+            response = client.put(f"/books/{book_id}", json=update_data)
+            
+            assert response.status_code == 500
+            assert "error occurred" in response.json()["detail"].lower()
+
