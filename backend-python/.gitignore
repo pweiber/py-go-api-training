@@ -63,3 +63,4 @@ test_isbn_fix.py
 test_debug.py
 TEST_EXECUTION_REPORT.txt
 coverage.xml
+.idea/
