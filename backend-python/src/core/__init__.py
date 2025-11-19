@@ -1,6 +1,17 @@
-"""Core application modules including configuration and database."""
+"""Core application modules including configuration, database, and exceptions."""
 
-from src.core.config import settings
-from src.core.database import get_db, Base, engine
+from src.core.exceptions import (
+    DatabaseException,
+    DuplicateResourceException,
+    ResourceNotFoundException,
+    ForeignKeyViolationException,
+    InvalidDataException,
+)
 
-__all__ = ["settings", "get_db", "Base", "engine"]
+__all__ = [
+    "DatabaseException",
+    "DuplicateResourceException",
+    "ResourceNotFoundException",
+    "ForeignKeyViolationException",
+    "InvalidDataException",
+]
