@@ -1,13 +1,21 @@
 """
 Books API endpoints - CRUD operations for books resource.
+
+This module implements RESTful CRUD operations for the Book resource with
+comprehensive error handling for database operations.
 """
 from fastapi import APIRouter, HTTPException, Depends, status
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from typing import List
+import logging
 
 from src.core.database import get_db
 from src.models.book import Book
 from src.schemas.book import BookCreate, BookUpdate, BookResponse
+
+# Configure logger
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -22,9 +30,19 @@ async def get_books(db: Session = Depends(get_db)):
         
     Returns:
         List of all books
+
+    Raises:
+        HTTPException: 500 if database error occurs
     """
-    books = db.query(Book).all()
-    return books
+    try:
+        books = db.query(Book).all()
+        return books
+    except SQLAlchemyError as e:
+        logger.error(f"Database error fetching books: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while retrieving books"
+        )
 
 
 @router.get("/books/{book_id}", response_model=BookResponse, status_code=status.HTTP_200_OK)
@@ -41,16 +59,27 @@ async def get_book(book_id: int, db: Session = Depends(get_db)):
         
     Raises:
         HTTPException: 404 if book not found
+        HTTPException: 500 if database error occurs
     """
-    book = db.query(Book).filter(Book.id == book_id).first()
-    
-    if book is None:
+    try:
+        book = db.query(Book).filter(Book.id == book_id).first()
+
+        if book is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Book with id {book_id} not found"
+            )
+
+        return book
+    except HTTPException:
+        # Re-raise HTTP exceptions (like 404)
+        raise
+    except SQLAlchemyError as e:
+        logger.error(f"Database error fetching book {book_id}: {str(e)}")
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Book with id {book_id} not found"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while retrieving the book"
         )
-    
-    return book
 
 
 @router.post("/books", response_model=BookResponse, status_code=status.HTTP_201_CREATED)
@@ -58,6 +87,10 @@ async def create_book(book: BookCreate, db: Session = Depends(get_db)):
     """
     Create a new book.
     
+    This endpoint implements a belt-and-suspenders approach:
+    1. Pre-check for duplicate ISBN (fast-fail for better UX)
+    2. Exception handling around commit (safety net for race conditions)
+
     Args:
         book: Book data to create
         db: Database session dependency
@@ -66,9 +99,10 @@ async def create_book(book: BookCreate, db: Session = Depends(get_db)):
         Created book with ID
         
     Raises:
-        HTTPException: 400 if ISBN already exists
+        HTTPException: 400/409 if ISBN already exists
+        HTTPException: 500 if database error occurs
     """
-    # Check if ISBN already exists
+    # Pre-check for duplicate ISBN (provides faster, clearer error feedback)
     existing_book = db.query(Book).filter(Book.isbn == book.isbn).first()
     if existing_book:
         raise HTTPException(
@@ -85,12 +119,40 @@ async def create_book(book: BookCreate, db: Session = Depends(get_db)):
         description=book.description
     )
     
-    # Add to database
-    db.add(db_book)
-    db.commit()
-    db.refresh(db_book)
-    
-    return db_book
+    # Add to database with exception handling (safety net for race conditions)
+    try:
+        db.add(db_book)
+        db.commit()
+        db.refresh(db_book)
+
+        logger.info(f"Successfully created book with ISBN {book.isbn} (ID: {db_book.id})")
+        return db_book
+
+    except IntegrityError as e:
+        db.rollback()
+        error_message = str(e.orig) if e.orig else str(e)
+        logger.error(f"Integrity error creating book: {error_message}")
+
+        # Handle race condition where ISBN was added between check and commit
+        if "isbn" in error_message.lower() and ("unique" in error_message.lower() or "duplicate" in error_message.lower()):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Book with ISBN {book.isbn} already exists"
+            )
+
+        # Handle other integrity errors (NOT NULL, CHECK constraints, etc.)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Database integrity constraint violated"
+        )
+
+    except SQLAlchemyError as e:
+        db.rollback()
+        logger.error(f"Database error creating book: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while creating the book"
+        )
 
 
 @router.put("/books/{book_id}", response_model=BookResponse, status_code=status.HTTP_200_OK)
@@ -98,6 +160,10 @@ async def update_book(book_id: int, book: BookUpdate, db: Session = Depends(get_
     """
     Update an existing book.
     
+    Implements the same belt-and-suspenders approach as create:
+    1. Pre-check for existence and duplicate ISBN
+    2. Exception handling around commit
+
     Args:
         book_id: The ID of the book to update
         book: Book data to update (only provided fields will be updated)
@@ -108,7 +174,8 @@ async def update_book(book_id: int, book: BookUpdate, db: Session = Depends(get_
         
     Raises:
         HTTPException: 404 if book not found
-        HTTPException: 400 if ISBN already exists for another book
+        HTTPException: 400/409 if ISBN already exists for another book
+        HTTPException: 500 if database error occurs
     """
     # Find the book
     db_book = db.query(Book).filter(Book.id == book_id).first()
@@ -133,10 +200,39 @@ async def update_book(book_id: int, book: BookUpdate, db: Session = Depends(get_
     for field, value in update_data.items():
         setattr(db_book, field, value)
     
-    db.commit()
-    db.refresh(db_book)
-    
-    return db_book
+    # Commit with exception handling
+    try:
+        db.commit()
+        db.refresh(db_book)
+
+        logger.info(f"Successfully updated book ID {book_id}")
+        return db_book
+
+    except IntegrityError as e:
+        db.rollback()
+        error_message = str(e.orig) if e.orig else str(e)
+        logger.error(f"Integrity error updating book {book_id}: {error_message}")
+
+        # Handle ISBN duplicate (race condition)
+        if "isbn" in error_message.lower() and ("unique" in error_message.lower() or "duplicate" in error_message.lower()):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Book with ISBN {book.isbn} already exists"
+            )
+
+        # Handle other integrity errors
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Database integrity constraint violated"
+        )
+
+    except SQLAlchemyError as e:
+        db.rollback()
+        logger.error(f"Database error updating book {book_id}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while updating the book"
+        )
 
 
 @router.delete("/books/{book_id}", status_code=status.HTTP_200_OK)
@@ -153,6 +249,8 @@ async def delete_book(book_id: int, db: Session = Depends(get_db)):
         
     Raises:
         HTTPException: 404 if book not found
+        HTTPException: 409 if book is referenced by other records
+        HTTPException: 500 if database error occurs
     """
     # Find the book
     db_book = db.query(Book).filter(Book.id == book_id).first()
@@ -163,8 +261,36 @@ async def delete_book(book_id: int, db: Session = Depends(get_db)):
             detail=f"Book with id {book_id} not found"
         )
     
-    # Delete the book
-    db.delete(db_book)
-    db.commit()
-    
-    return {"message": "Book deleted successfully"}
+    # Delete with exception handling
+    try:
+        db.delete(db_book)
+        db.commit()
+
+        logger.info(f"Successfully deleted book ID {book_id}")
+        return {"message": "Book deleted successfully"}
+
+    except IntegrityError as e:
+        db.rollback()
+        error_message = str(e.orig) if e.orig else str(e)
+        logger.error(f"Integrity error deleting book {book_id}: {error_message}")
+
+        # Handle foreign key constraint (book is referenced elsewhere)
+        if "foreign key" in error_message.lower() or "referenced" in error_message.lower():
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Cannot delete book because it is referenced by other records (e.g., orders, reviews)"
+            )
+
+        # Handle other integrity errors
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot delete book due to database constraints"
+        )
+
+    except SQLAlchemyError as e:
+        db.rollback()
+        logger.error(f"Database error deleting book {book_id}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while deleting the book"
+        )
