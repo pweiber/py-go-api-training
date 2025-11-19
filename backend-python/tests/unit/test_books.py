@@ -11,7 +11,11 @@ def test_health_check(client):
     """Test the root endpoint returns correct message."""
     response = client.get("/")
     assert response.status_code == 200
-    assert response.json() == {"message": "Book Store API"}
+    response_data = response.json()
+    assert response_data["message"] == "Book Store API"
+    assert response_data["version"] == "1.0.0"
+    assert "docs" in response_data
+    assert "health" in response_data
 
 def test_create_book_duplicate_isbn(client):
     """Test creating a book with duplicate ISBN returns 400."""
