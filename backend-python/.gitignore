@@ -55,3 +55,11 @@ htmlcov/
 
 # Docker
 .dockerignore
+CRUD_TEST_REPORT.md
+TEST_SUMMARY.md
+detailed_test_runner.py
+IMPLEMENTATION_SUMMARY.md
+test_isbn_fix.py
+test_debug.py
+TEST_EXECUTION_REPORT.txt
+coverage.xml
