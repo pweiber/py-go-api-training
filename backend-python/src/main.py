@@ -101,7 +101,7 @@ async def root():
 # ============================================================================
 
 # Include API routers
-app.include_router(books.router, tags=["books"])
+app.include_router(books.router, prefix="/api/v1", tags=["books"])
 
 # ============================================================================
 # APPLICATION STARTUP
