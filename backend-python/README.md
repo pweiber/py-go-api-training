@@ -92,6 +92,67 @@ backend-python/
    uvicorn src.main:app --reload
    ```
 
+## 🌐 API Endpoints
+
+### API Versioning
+
+This API uses URL-based versioning with the `/api/v1` prefix for all endpoints. This approach:
+- Provides clear API version identification
+- Allows for future versions (v2, v3) without breaking existing clients
+- Aligns URL structure with the directory structure (`src/api/v1/`)
+- Follows REST API industry best practices
+
+### Available Endpoints
+
+#### Books API (v1)
+
+All book endpoints are prefixed with `/api/v1/books`:
+
+- **GET** `/api/v1/books` - List all books
+- **POST** `/api/v1/books` - Create a new book
+- **GET** `/api/v1/books/{id}` - Get a specific book by ID
+- **PUT** `/api/v1/books/{id}` - Update a book
+- **DELETE** `/api/v1/books/{id}` - Delete a book
+
+#### System Endpoints
+
+- **GET** `/` - API root and information
+- **GET** `/health` - Health check endpoint
+- **GET** `/docs` - Interactive API documentation (Swagger UI)
+- **GET** `/redoc` - Alternative API documentation (ReDoc)
+
+### Example API Calls
+
+```bash
+# Create a book
+curl -X POST "http://localhost:8000/api/v1/books" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "The Python Guide",
+    "author": "John Doe",
+    "isbn": "978-0123456789",
+    "published_date": "2023-01-15",
+    "description": "A comprehensive guide to Python"
+  }'
+
+# Get all books
+curl -X GET "http://localhost:8000/api/v1/books"
+
+# Get a specific book
+curl -X GET "http://localhost:8000/api/v1/books/1"
+
+# Update a book
+curl -X PUT "http://localhost:8000/api/v1/books/1" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "The Advanced Python Guide",
+    "description": "An advanced guide with best practices"
+  }'
+
+# Delete a book
+curl -X DELETE "http://localhost:8000/api/v1/books/1"
+```
+
 ## 📝 Development Workflow
 
 ### Adding New Features
