@@ -53,7 +53,7 @@ class TestIntegrityErrorHandling:
             integrity_error = IntegrityError("statement", "params", mock_orig)
             mock_commit.side_effect = integrity_error
 
-            response = client.post("/books", json=book_data)
+            response = client.post("/api/v1/books", json=book_data)
 
             # Should return 409 Conflict
             assert response.status_code == 409
@@ -75,14 +75,14 @@ class TestIntegrityErrorHandling:
             "published_date": "2023-01-15",
         }
 
-        response1 = client.post("/books", json=book1_data)
-        response2 = client.post("/books", json=book2_data)
+        response1 = client.post("/api/v1/books", json=book1_data)
+        response2 = client.post("/api/v1/books", json=book2_data)
 
         book2_id = response2.json()["id"]
 
         # Try to update book2 with book1's ISBN
         update_data = {"isbn": "978-1111111112"}
-        response = client.put(f"/books/{book2_id}", json=update_data)
+        response = client.put(f"/api/v1/books/{book2_id}", json=update_data)
 
         assert response.status_code == 400
         assert "exists" in response.json()["detail"].lower()
@@ -105,7 +105,7 @@ class TestDatabaseErrorHandling:
             from sqlalchemy.exc import DatabaseError
             mock_commit.side_effect = DatabaseError("statement", "params", "database connection lost")
 
-            response = client.post("/books", json=book_data)
+            response = client.post("/api/v1/books", json=book_data)
 
             # Should return 500 Internal Server Error
             assert response.status_code == 500
@@ -116,7 +116,7 @@ class TestDatabaseErrorHandling:
         with patch('sqlalchemy.orm.Query.all') as mock_all:
             mock_all.side_effect = SQLAlchemyError("Database error")
 
-            response = client.get("/books")
+            response = client.get("/api/v1/books")
 
             assert response.status_code == 500
             assert "error occurred" in response.json()["detail"].lower()
@@ -134,7 +134,7 @@ class TestDeleteConstraints:
             "isbn": "978-5555555555",
             "published_date": "2023-01-15",
         }
-        create_response = client.post("/books", json=book_data)
+        create_response = client.post("/api/v1/books", json=book_data)
         book_id = create_response.json()["id"]
 
         # Mock the commit to simulate foreign key constraint error
@@ -145,7 +145,7 @@ class TestDeleteConstraints:
             integrity_error = IntegrityError("statement", "params", mock_orig)
             mock_commit.side_effect = integrity_error
 
-            response = client.delete(f"/books/{book_id}")
+            response = client.delete(f"/api/v1/books/{book_id}")
 
             # Should return 409 Conflict
             assert response.status_code == 409
@@ -153,7 +153,7 @@ class TestDeleteConstraints:
 
     def test_delete_nonexistent_book(self, client):
         """Test deleting a book that doesn't exist returns 404."""
-        response = client.delete("/books/99999")
+        response = client.delete("/api/v1/books/99999")
 
         assert response.status_code == 404
         assert "not found" in response.json()["detail"].lower()
@@ -172,11 +172,11 @@ class TestConcurrentOperations:
         }
 
         # First request succeeds
-        response1 = client.post("/books", json=book_data)
+        response1 = client.post("/api/v1/books", json=book_data)
         assert response1.status_code == 201
 
         # Second request should fail
-        response2 = client.post("/books", json=book_data)
+        response2 = client.post("/api/v1/books", json=book_data)
         assert response2.status_code in [400, 409]
         assert "exists" in response2.json()["detail"].lower()
 
@@ -194,10 +194,10 @@ class TestErrorResponses:
         }
 
         # Create book
-        client.post("/books", json=book_data)
+        client.post("/api/v1/books", json=book_data)
 
         # Try to create duplicate
-        response = client.post("/books", json=book_data)
+        response = client.post("/api/v1/books", json=book_data)
 
         assert response.status_code in [400, 409]
         response_data = response.json()
@@ -209,7 +209,7 @@ class TestErrorResponses:
 
     def test_404_error_structure(self, client):
         """Test that 404 errors have correct structure."""
-        response = client.get("/books/99999")
+        response = client.get("/api/v1/books/99999")
 
         assert response.status_code == 404
         response_data = response.json()
@@ -231,16 +231,16 @@ class TestRollbackBehavior:
         }
 
         # Create book successfully
-        response1 = client.post("/books", json=book_data)
+        response1 = client.post("/api/v1/books", json=book_data)
         assert response1.status_code == 201
         book_id = response1.json()["id"]
 
         # Try to create duplicate (should fail and rollback)
-        response2 = client.post("/books", json=book_data)
+        response2 = client.post("/api/v1/books", json=book_data)
         assert response2.status_code in [400, 409]
 
         # Verify only one book exists with this ID (the first one)
-        response = client.get(f"/books/{book_id}")
+        response = client.get(f"/api/v1/books/{book_id}")
         assert response.status_code == 200
 
         # Verify it has the original data (ISBN is normalized to remove dashes)
@@ -254,7 +254,7 @@ class TestGetOperationsErrorHandling:
 
     def test_get_book_by_id_not_found(self, client):
         """Test getting a non-existent book returns 404."""
-        response = client.get("/books/99999")
+        response = client.get("/api/v1/books/99999")
         assert response.status_code == 404
         assert "not found" in response.json()["detail"].lower()
 
@@ -267,14 +267,14 @@ class TestGetOperationsErrorHandling:
             "isbn": "978-3333333333",
             "published_date": "2023-01-15",
         }
-        create_response = client.post("/books", json=book_data)
+        create_response = client.post("/api/v1/books", json=book_data)
         book_id = create_response.json()["id"]
 
         # Mock the query to raise an error
         with patch('sqlalchemy.orm.Query.first') as mock_first:
             mock_first.side_effect = SQLAlchemyError("Database error")
 
-            response = client.get(f"/books/{book_id}")
+            response = client.get(f"/api/v1/books/{book_id}")
 
             assert response.status_code == 500
             assert "error occurred" in response.json()["detail"].lower()
@@ -286,7 +286,7 @@ class TestUpdateOperationsErrorHandling:
     def test_update_book_not_found(self, client):
         """Test updating a non-existent book returns 404."""
         update_data = {"title": "Updated Title"}
-        response = client.put("/books/99999", json=update_data)
+        response = client.put("/api/v1/books/99999", json=update_data)
 
         assert response.status_code == 404
         assert "not found" in response.json()["detail"].lower()
@@ -300,7 +300,7 @@ class TestUpdateOperationsErrorHandling:
             "isbn": "978-1234567890",
             "published_date": "2023-01-15",
         }
-        create_response = client.post("/books", json=book_data)
+        create_response = client.post("/api/v1/books", json=book_data)
         book_id = create_response.json()["id"]
 
         # Mock commit to raise error
@@ -309,7 +309,7 @@ class TestUpdateOperationsErrorHandling:
             mock_commit.side_effect = DatabaseError("statement", "params", "connection error")
 
             update_data = {"title": "New Title"}
-            response = client.put(f"/books/{book_id}", json=update_data)
+            response = client.put(f"/api/v1/books/{book_id}", json=update_data)
 
             assert response.status_code == 500
             assert "error occurred" in response.json()["detail"].lower()
