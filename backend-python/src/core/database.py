@@ -26,8 +26,8 @@ Base = declarative_base()
 
 def get_db():
     """
-    Dependency function to get database session.
-    
+    Dependency function to get database session with automatic rollback on errors.
+
     Yields:
         Session: SQLAlchemy database session
         
@@ -35,10 +35,18 @@ def get_db():
         @app.get("/items")
         def get_items(db: Session = Depends(get_db)):
             return db.query(Item).all()
+
+    Note:
+        Automatically rolls back the transaction if an exception occurs,
+        ensuring the database doesn't remain in an inconsistent state.
     """
     db = SessionLocal()
     try:
         yield db
+    except Exception:
+        # Rollback the transaction if any exception occurs
+        db.rollback()
+        raise
     finally:
         db.close()
 
