@@ -27,11 +27,11 @@ def test_create_book_duplicate_isbn(client):
         "description": "Test description"
     }
     # Create first book
-    response = client.post("/books", json=book_data)
+    response = client.post("/api/v1/books", json=book_data)
     assert response.status_code == 201
     
     # Try to create duplicate
-    response = client.post("/books", json=book_data)
+    response = client.post("/api/v1/books", json=book_data)
     assert response.status_code == 400
     assert "already exists" in response.json()["detail"]
 
@@ -46,9 +46,9 @@ def test_get_all_books(client):
         "published_date": "2023-01-15",
         "description": "Test description"
     }
-    client.post("/books", json=book_data)
-    
-    response = client.get("/books")
+    client.post("/api/v1/books", json=book_data)
+
+    response = client.get("/api/v1/books")
     assert response.status_code == 200
     data = response.json()
     assert isinstance(data, list)
@@ -65,10 +65,10 @@ def test_get_book_by_id(client):
         "published_date": "2023-01-15",
         "description": "Specific description"
     }
-    create_response = client.post("/books", json=book_data)
+    create_response = client.post("/api/v1/books", json=book_data)
     book_id = create_response.json()["id"]
     
-    response = client.get(f"/books/{book_id}")
+    response = client.get(f"/api/v1/books/{book_id}")
     assert response.status_code == 200
     data = response.json()
     assert data["id"] == book_id
@@ -77,7 +77,7 @@ def test_get_book_by_id(client):
 
 def test_get_book_by_id_not_found(client):
     """Test getting a non-existent book returns 404."""
-    response = client.get("/books/99999")
+    response = client.get("/api/v1/books/99999")
     assert response.status_code == 404
     assert "not found" in response.json()["detail"]
 
@@ -92,7 +92,7 @@ def test_update_book(client):
         "published_date": "2023-01-15",
         "description": "Original description"
     }
-    create_response = client.post("/books", json=book_data)
+    create_response = client.post("/api/v1/books", json=book_data)
     book_id = create_response.json()["id"]
     
     # Update the book
@@ -100,7 +100,7 @@ def test_update_book(client):
         "title": "Updated Title",
         "description": "Updated description"
     }
-    response = client.put(f"/books/{book_id}", json=update_data)
+    response = client.put(f"/api/v1/books/{book_id}", json=update_data)
     assert response.status_code == 200
     data = response.json()
     assert data["title"] == "Updated Title"
@@ -111,7 +111,7 @@ def test_update_book(client):
 def test_update_book_not_found(client):
     """Test updating a non-existent book returns 404."""
     update_data = {"title": "New Title"}
-    response = client.put("/books/99999", json=update_data)
+    response = client.put("/api/v1/books/99999", json=update_data)
     assert response.status_code == 404
 
 
@@ -125,21 +125,21 @@ def test_delete_book(client):
         "published_date": "2023-01-15",
         "description": "Will be deleted"
     }
-    create_response = client.post("/books", json=book_data)
+    create_response = client.post("/api/v1/books", json=book_data)
     book_id = create_response.json()["id"]
     
     # Delete the book
-    response = client.delete(f"/books/{book_id}")
+    response = client.delete(f"/api/v1/books/{book_id}")
     assert response.status_code == 200
     assert response.json() == {"message": "Book deleted successfully"}
     
     # Verify book is deleted
-    get_response = client.get(f"/books/{book_id}")
+    get_response = client.get(f"/api/v1/books/{book_id}")
     assert get_response.status_code == 404
 
 
 def test_delete_book_not_found(client):
     """Test deleting a non-existent book returns 404."""
-    response = client.delete("/books/99999")
+    response = client.delete("/api/v1/books/99999")
     assert response.status_code == 404
 
