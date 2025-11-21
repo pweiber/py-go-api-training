@@ -25,11 +25,11 @@ class TestIntegrityErrorHandling:
         }
 
         # Create first book
-        response1 = client.post("/books", json=book_data)
+        response1 = client.post("/api/v1/books", json=book_data)
         assert response1.status_code == 201
 
         # Try to create duplicate - should fail at pre-check
-        response2 = client.post("/books", json=book_data)
+        response2 = client.post("/api/v1/books", json=book_data)
         assert response2.status_code == 400
         assert "already exists" in response2.json()["detail"].lower()
 
