@@ -87,9 +87,9 @@ async def create_book(book: BookCreate, db: Session = Depends(get_db)):
     """
     Create a new book.
     
-    This endpoint implements a belt-and-suspenders approach:
-    1. Pre-check for duplicate ISBN (fast-fail for better UX)
-    2. Exception handling around commit (safety net for race conditions)
+    This endpoint relies on database constraints to enforce ISBN uniqueness.
+    The UNIQUE constraint on the ISBN column will prevent duplicates, and
+    IntegrityError exceptions are caught and converted to appropriate HTTP responses.
 
     Args:
         book: Book data to create
@@ -99,17 +99,9 @@ async def create_book(book: BookCreate, db: Session = Depends(get_db)):
         Created book with ID
         
     Raises:
-        HTTPException: 400/409 if ISBN already exists
+        HTTPException: 400 if ISBN already exists or other constraint violated
         HTTPException: 500 if database error occurs
     """
-    # Pre-check for duplicate ISBN (provides faster, clearer error feedback)
-    existing_book = db.query(Book).filter(Book.isbn == book.isbn).first()
-    if existing_book:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Book with ISBN {book.isbn} already exists"
-        )
-    
     # Create new book instance
     db_book = Book(
         title=book.title,
@@ -119,7 +111,7 @@ async def create_book(book: BookCreate, db: Session = Depends(get_db)):
         description=book.description
     )
     
-    # Add to database with exception handling (safety net for race conditions)
+    # Add to database with exception handling
     try:
         db.add(db_book)
         db.commit()
@@ -133,10 +125,10 @@ async def create_book(book: BookCreate, db: Session = Depends(get_db)):
         error_message = str(e.orig) if e.orig else str(e)
         logger.error(f"Integrity error creating book: {error_message}")
 
-        # Handle race condition where ISBN was added between check and commit
+        # Handle duplicate ISBN constraint violation
         if "isbn" in error_message.lower() and ("unique" in error_message.lower() or "duplicate" in error_message.lower()):
             raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
+                status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Book with ISBN {book.isbn} already exists"
             )
 
@@ -160,9 +152,9 @@ async def update_book(book_id: int, book: BookUpdate, db: Session = Depends(get_
     """
     Update an existing book.
     
-    Implements the same belt-and-suspenders approach as create:
-    1. Pre-check for existence and duplicate ISBN
-    2. Exception handling around commit
+    This endpoint relies on database constraints to enforce ISBN uniqueness.
+    The book existence is checked first, then updates are applied and committed
+    with exception handling for constraint violations.
 
     Args:
         book_id: The ID of the book to update
@@ -174,7 +166,7 @@ async def update_book(book_id: int, book: BookUpdate, db: Session = Depends(get_
         
     Raises:
         HTTPException: 404 if book not found
-        HTTPException: 400/409 if ISBN already exists for another book
+        HTTPException: 400 if ISBN already exists for another book or other constraint violated
         HTTPException: 500 if database error occurs
     """
     # Find the book
@@ -185,15 +177,6 @@ async def update_book(book_id: int, book: BookUpdate, db: Session = Depends(get_
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Book with id {book_id} not found"
         )
-    
-    # Check if ISBN is being updated and if it already exists
-    if book.isbn is not None and book.isbn != db_book.isbn:
-        existing_book = db.query(Book).filter(Book.isbn == book.isbn).first()
-        if existing_book:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Book with ISBN {book.isbn} already exists"
-            )
     
     # Update only provided fields
     update_data = book.model_dump(exclude_unset=True)
@@ -213,10 +196,10 @@ async def update_book(book_id: int, book: BookUpdate, db: Session = Depends(get_
         error_message = str(e.orig) if e.orig else str(e)
         logger.error(f"Integrity error updating book {book_id}: {error_message}")
 
-        # Handle ISBN duplicate (race condition)
+        # Handle duplicate ISBN constraint violation
         if "isbn" in error_message.lower() and ("unique" in error_message.lower() or "duplicate" in error_message.lower()):
             raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
+                status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Book with ISBN {book.isbn} already exists"
             )
 
