@@ -15,7 +15,7 @@ class TestIntegrityErrorHandling:
     """Test handling of database integrity errors."""
 
     def test_create_book_duplicate_isbn_precheck(self, client):
-        """Test that duplicate ISBN is caught by pre-check (fast path)."""
+        """Test that duplicate ISBN is caught by database constraint."""
         book_data = {
             "title": "Test Book",
             "author": "Test Author",
@@ -28,7 +28,7 @@ class TestIntegrityErrorHandling:
         response1 = client.post("/api/v1/books", json=book_data)
         assert response1.status_code == 201
 
-        # Try to create duplicate - should fail at pre-check
+        # Try to create duplicate - should fail at database constraint
         response2 = client.post("/api/v1/books", json=book_data)
         assert response2.status_code == 400
         assert "already exists" in response2.json()["detail"].lower()
@@ -55,8 +55,8 @@ class TestIntegrityErrorHandling:
 
             response = client.post("/api/v1/books", json=book_data)
 
-            # Should return 409 Conflict
-            assert response.status_code == 409
+            # Should return 400 Bad Request (consistent with constraint violations)
+            assert response.status_code == 400
             assert "isbn" in response.json()["detail"].lower() or "exists" in response.json()["detail"].lower()
 
     def test_update_book_duplicate_isbn_integrity_error(self, client):
