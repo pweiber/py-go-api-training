@@ -16,7 +16,6 @@ class UserCreate(BaseModel):
     """Schema for user registration."""
     email: EmailStr = Field(..., description="User email address")
     password: str = Field(..., min_length=8, max_length=100, description="User password (min 8 characters)")
-    role: Optional[UserRole] = Field(default=UserRole.USER, description="User role (user or admin)")
 
     @field_validator('password')
     @classmethod
@@ -34,8 +33,7 @@ class UserCreate(BaseModel):
         json_schema_extra = {
             "example": {
                 "email": "user@example.com",
-                "password": "testpassword123",
-                "role": "user"
+                "password": "testpassword123"
             }
         }
 
@@ -114,4 +112,17 @@ class TokenData(BaseModel):
     """Schema for decoded token data."""
     email: Optional[str] = None
     user_id: Optional[int] = None
+
+
+class UserRoleUpdate(BaseModel):
+    """Schema for updating user role (admin-only)."""
+    role: UserRole = Field(..., description="New user role")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "role": "admin"
+            }
+        }
+
 
