@@ -1,6 +1,7 @@
 """
 Pydantic schemas for User authentication and management.
 """
+import re
 from pydantic import BaseModel, EmailStr, Field, field_validator
 from datetime import datetime
 from typing import Optional
@@ -17,16 +18,26 @@ class UserCreate(BaseModel):
     email: EmailStr = Field(..., description="User email address")
     password: str = Field(..., min_length=8, max_length=100, description="User password (min 8 characters)")
 
+    @field_validator('email')
+    @classmethod
+    def normalize_email(cls, v: str) -> str:
+        """Normalize email to lowercase."""
+        return v.lower().strip()
+
     @field_validator('password')
     @classmethod
     def validate_password(cls, v: str) -> str:
         """Validate password strength."""
         if len(v) < 8:
             raise ValueError("Password must be at least 8 characters long")
-        if not any(char.isdigit() for char in v):
+        if not re.search(r'[a-z]', v):
+            raise ValueError("Password must contain at least one lowercase letter")
+        if not re.search(r'[A-Z]', v):
+            raise ValueError("Password must contain at least one uppercase letter")
+        if not re.search(r'\d', v):
             raise ValueError("Password must contain at least one digit")
-        if not any(char.isalpha() for char in v):
-            raise ValueError("Password must contain at least one letter")
+        if not re.search(r'[!@#$%^&*(),.?":{}|<>]', v):
+            raise ValueError("Password must contain at least one special character")
         return v
 
     class Config:
@@ -42,6 +53,12 @@ class UserLogin(BaseModel):
     """Schema for user login."""
     email: EmailStr = Field(..., description="User email address")
     password: str = Field(..., description="User password")
+
+    @field_validator('email')
+    @classmethod
+    def normalize_email(cls, v: str) -> str:
+        """Normalize email to lowercase."""
+        return v.lower().strip()
 
     class Config:
         json_schema_extra = {
@@ -78,6 +95,15 @@ class UserUpdate(BaseModel):
     email: Optional[EmailStr] = Field(None, description="User email address")
     password: Optional[str] = Field(None, min_length=8, max_length=100, description="New password")
     is_active: Optional[bool] = Field(None, description="Whether user is active")
+    current_password: Optional[str] = Field(None, description="Current password (required for email change)")
+
+    @field_validator('email')
+    @classmethod
+    def normalize_email(cls, v: Optional[str]) -> Optional[str]:
+        """Normalize email to lowercase if provided."""
+        if v is None:
+            return v
+        return v.lower().strip()
 
     @field_validator('password')
     @classmethod
@@ -87,10 +113,14 @@ class UserUpdate(BaseModel):
             return v
         if len(v) < 8:
             raise ValueError("Password must be at least 8 characters long")
-        if not any(char.isdigit() for char in v):
+        if not re.search(r'[a-z]', v):
+            raise ValueError("Password must contain at least one lowercase letter")
+        if not re.search(r'[A-Z]', v):
+            raise ValueError("Password must contain at least one uppercase letter")
+        if not re.search(r'\d', v):
             raise ValueError("Password must contain at least one digit")
-        if not any(char.isalpha() for char in v):
-            raise ValueError("Password must contain at least one letter")
+        if not re.search(r'[!@#$%^&*(),.?":{}|<>]', v):
+            raise ValueError("Password must contain at least one special character")
         return v
 
 
