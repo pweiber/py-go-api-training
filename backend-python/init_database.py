@@ -4,13 +4,16 @@ Database initialization and verification script.
 Run this to set up the database tables and verify connection.
 """
 import sys
+import os
 from pathlib import Path
 
 # Add the project root to the path
 sys.path.insert(0, str(Path(__file__).parent))
 
-from src.core.database import engine, init_db, Base
+from src.core.database import engine, init_db, Base, SessionLocal
 from src.models import Book, User
+from src.models.user import UserRole
+from src.core.auth import hash_password
 from sqlalchemy import text
 
 def check_database_connection():
@@ -46,6 +49,59 @@ def initialize_database():
         traceback.print_exc()
         return False
 
+
+def seed_initial_admin():
+    """
+    Seed the initial admin user if no users exist.
+
+    Reads admin credentials from environment variables:
+    - INITIAL_ADMIN_EMAIL (default: admin@example.com)
+    - INITIAL_ADMIN_PASSWORD (default: admin123456)
+    """
+    db = SessionLocal()
+    try:
+        # Check if any users exist
+        user_count = db.query(User).count()
+
+        if user_count > 0:
+            print("ℹ️  Users already exist, skipping admin seeding.")
+            return True
+
+        # Get admin credentials from environment
+        admin_email = os.getenv("INITIAL_ADMIN_EMAIL", "admin@example.com")
+        admin_password = os.getenv("INITIAL_ADMIN_PASSWORD", "admin123456")
+
+        print(f"Creating initial admin user: {admin_email}")
+
+        # Create admin user
+        admin_user = User(
+            email=admin_email,
+            hashed_password=hash_password(admin_password),
+            role=UserRole.ADMIN,
+            is_active=True
+        )
+
+        db.add(admin_user)
+        db.commit()
+        db.refresh(admin_user)
+
+        print(f"✅ Initial admin user created successfully!")
+        print(f"   Email: {admin_email}")
+        print(f"   Password: {admin_password}")
+        print(f"   ⚠️  Remember to change the password after first login!")
+
+        return True
+
+    except Exception as e:
+        print(f"❌ Admin seeding failed: {e}")
+        import traceback
+        traceback.print_exc()
+        db.rollback()
+        return False
+    finally:
+        db.close()
+
+
 def main():
     """Main execution."""
     print("=" * 80)
@@ -70,7 +126,15 @@ def main():
     if not initialize_database():
         print("\n⚠️  Database initialization failed!")
         sys.exit(1)
-    
+
+    print()
+
+    # Step 3: Seed initial admin user
+    print("Step 3: Seeding initial admin user...")
+    if not seed_initial_admin():
+        print("\n⚠️  Admin seeding failed!")
+        sys.exit(1)
+
     print()
     print("=" * 80)
     print("✅ DATABASE READY!")
