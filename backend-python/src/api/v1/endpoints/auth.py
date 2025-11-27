@@ -1,13 +1,15 @@
 """
 Authentication API endpoints - User registration, login, and profile management.
 """
-from fastapi import APIRouter, HTTPException, Depends, status
+from fastapi import APIRouter, HTTPException, Depends, status, Request
 from sqlalchemy.orm import Session
 from datetime import timedelta
 
 from src.core.database import get_db
+from src.core.rate_limit import limiter
 from src.core.auth import (
     hash_password,
+    verify_password,
     authenticate_user,
     create_access_token,
     get_current_user,
@@ -77,7 +79,8 @@ async def register_user(user: UserCreate, db: Session = Depends(get_db)):
 
 
 @router.post("/login", response_model=Token, status_code=status.HTTP_200_OK)
-async def login(user_credentials: UserLogin, db: Session = Depends(get_db)):
+@limiter.limit("5/minute")
+async def login(request: Request, user_credentials: UserLogin, db: Session = Depends(get_db)):
     """
     Login user and return JWT access token.
     
@@ -207,6 +210,18 @@ async def update_user_profile(
     """
     # Check if email is being updated and if it already exists
     if user_update.email and user_update.email != current_user.email:
+        # Require current password for email change
+        if not user_update.current_password:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Current password required to change email"
+            )
+        # Verify the current password is correct
+        if not verify_password(user_update.current_password, current_user.hashed_password):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Current password is incorrect"
+            )
         existing_user = db.query(User).filter(User.email == user_update.email).first()
         if existing_user:
             raise HTTPException(
@@ -216,6 +231,9 @@ async def update_user_profile(
     
     # Update user fields
     update_data = user_update.model_dump(exclude_unset=True)
+    
+    # Remove current_password from update data as it's not a model field
+    update_data.pop("current_password", None)
     
     # Hash password if it's being updated
     if "password" in update_data:
