@@ -6,6 +6,9 @@ from datetime import date
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
+# Standard strong password for tests
+STRONG_PASSWORD = "TestPassword123!"
+
 
 def test_health_check(client):
     """Test the root endpoint returns correct message."""
@@ -18,12 +21,12 @@ def test_create_book_duplicate_isbn(client):
     # Register and login to get token
     client.post("/register", json={
         "email": "booktest@example.com",
-        "password": "testpass123",
+        "password": STRONG_PASSWORD,
         "role": "user"
     })
     login_response = client.post("/login", json={
         "email": "booktest@example.com",
-        "password": "testpass123"
+        "password": STRONG_PASSWORD
     })
     token = login_response.json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
@@ -50,12 +53,12 @@ def test_get_all_books(client):
     # Register and login to get token
     client.post("/register", json={
         "email": "getbooks@example.com",
-        "password": "testpass123",
+        "password": STRONG_PASSWORD,
         "role": "user"
     })
     login_response = client.post("/login", json={
         "email": "getbooks@example.com",
-        "password": "testpass123"
+        "password": STRONG_PASSWORD
     })
     token = login_response.json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
@@ -82,12 +85,12 @@ def test_get_book_by_id(client):
     # Register and login to get token
     client.post("/register", json={
         "email": "getbyid@example.com",
-        "password": "testpass123",
+        "password": STRONG_PASSWORD,
         "role": "user"
     })
     login_response = client.post("/login", json={
         "email": "getbyid@example.com",
-        "password": "testpass123"
+        "password": STRONG_PASSWORD
     })
     token = login_response.json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
@@ -118,16 +121,16 @@ def test_get_book_by_id_not_found(client):
 
 
 def test_update_book(client):
-    """Test updating a book."""
+    """Test updating a book (by owner)."""
     # Register and login to get token
     client.post("/register", json={
         "email": "updatebook@example.com",
-        "password": "testpass123",
+        "password": STRONG_PASSWORD,
         "role": "user"
     })
     login_response = client.post("/login", json={
         "email": "updatebook@example.com",
-        "password": "testpass123"
+        "password": STRONG_PASSWORD
     })
     token = login_response.json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
@@ -143,7 +146,7 @@ def test_update_book(client):
     create_response = client.post("/books", json=book_data, headers=headers)
     book_id = create_response.json()["id"]
     
-    # Update the book
+    # Update the book (by owner)
     update_data = {
         "title": "Updated Title",
         "description": "Updated description"
@@ -158,25 +161,40 @@ def test_update_book(client):
 
 def test_update_book_not_found(client):
     """Test updating a non-existent book returns 404."""
+    # Register and login to get token
+    client.post("/register", json={
+        "email": "updatenotfound@example.com",
+        "password": STRONG_PASSWORD,
+        "role": "user"
+    })
+    login_response = client.post("/login", json={
+        "email": "updatenotfound@example.com",
+        "password": STRONG_PASSWORD
+    })
+    token = login_response.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+    
     update_data = {"title": "New Title"}
-    response = client.put("/books/99999", json=update_data)
+    response = client.put("/books/99999", json=update_data, headers=headers)
     assert response.status_code == 404
 
 
 def test_delete_book(client):
     """Test deleting a book."""
-    # Register and login as admin to get token
+    from tests.conftest import create_admin_user
+    
+    # Register regular user to create the book
     client.post("/register", json={
-        "email": "deletebook@example.com",
-        "password": "testpass123",
-        "role": "admin"
+        "email": "creator@example.com",
+        "password": STRONG_PASSWORD,
+        "role": "user"
     })
-    login_response = client.post("/login", json={
-        "email": "deletebook@example.com",
-        "password": "testpass123"
+    creator_login = client.post("/login", json={
+        "email": "creator@example.com",
+        "password": STRONG_PASSWORD
     })
-    token = login_response.json()["access_token"]
-    headers = {"Authorization": f"Bearer {token}"}
+    creator_token = creator_login.json()["access_token"]
+    creator_headers = {"Authorization": f"Bearer {creator_token}"}
 
     # Create a test book
     book_data = {
@@ -186,34 +204,41 @@ def test_delete_book(client):
         "published_date": "2023-01-15",
         "description": "Will be deleted"
     }
-    create_response = client.post("/books", json=book_data, headers=headers)
+    create_response = client.post("/books", json=book_data, headers=creator_headers)
     book_id = create_response.json()["id"]
     
+    # Create admin and delete the book
+    create_admin_user(client, "deletebook@example.com", STRONG_PASSWORD)
+    admin_login = client.post("/login", json={
+        "email": "deletebook@example.com",
+        "password": STRONG_PASSWORD
+    })
+    admin_token = admin_login.json()["access_token"]
+    admin_headers = {"Authorization": f"Bearer {admin_token}"}
+    
     # Delete the book
-    response = client.delete(f"/books/{book_id}", headers=headers)
+    response = client.delete(f"/books/{book_id}", headers=admin_headers)
     assert response.status_code == 200
     assert response.json() == {"message": "Book deleted successfully"}
     
     # Verify book is deleted
-    get_response = client.get(f"/books/{book_id}", headers=headers)
+    get_response = client.get(f"/books/{book_id}", headers=admin_headers)
     assert get_response.status_code == 404
 
 
 def test_delete_book_not_found(client):
     """Test deleting a non-existent book returns 404."""
-    # Register and login as admin to get token
-    client.post("/register", json={
+    from tests.conftest import create_admin_user
+    
+    # Create admin
+    create_admin_user(client, "deletenotfound@example.com", STRONG_PASSWORD)
+    admin_login = client.post("/login", json={
         "email": "deletenotfound@example.com",
-        "password": "testpass123",
-        "role": "admin"
+        "password": STRONG_PASSWORD
     })
-    login_response = client.post("/login", json={
-        "email": "deletenotfound@example.com",
-        "password": "testpass123"
-    })
-    token = login_response.json()["access_token"]
-    headers = {"Authorization": f"Bearer {token}"}
+    admin_token = admin_login.json()["access_token"]
+    admin_headers = {"Authorization": f"Bearer {admin_token}"}
 
-    response = client.delete("/books/99999", headers=headers)
+    response = client.delete("/books/99999", headers=admin_headers)
     assert response.status_code == 404
 

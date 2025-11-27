@@ -9,6 +9,7 @@ from sqlalchemy.pool import StaticPool
 
 from src.main import app
 from src.core.database import Base, get_db
+from src.core.rate_limit import limiter
 
 # Create in-memory SQLite database for testing
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
@@ -35,15 +36,29 @@ def client():
     """
     Create a fresh test database and client for each test.
     """
-    # Create tables
+    # Create tables using test database
     Base.metadata.create_all(bind=engine)
 
     # Override the dependency
     app.dependency_overrides[get_db] = override_get_db
 
+    # Disable the startup event that tries to connect to PostgreSQL
+    # Store original startup handlers and clear them
+    original_on_startup = app.router.on_startup.copy()
+    app.router.on_startup.clear()
+
+    # Disable rate limiting for tests
+    limiter.enabled = False
+
     # Create test client
     with TestClient(app) as test_client:
         yield test_client
+
+    # Re-enable rate limiting
+    limiter.enabled = True
+
+    # Restore original startup handlers
+    app.router.on_startup = original_on_startup
 
     # Clean up - drop all tables after each test
     Base.metadata.drop_all(bind=engine)
@@ -52,7 +67,7 @@ def client():
     app.dependency_overrides.clear()
 
 
-def create_admin_user(client: TestClient, email: str = "admin@test.com", password: str = "admin123") -> dict:
+def create_admin_user(client: TestClient, email: str = "admin@test.com", password: str = "Admin123!") -> dict:
     """
     Helper function to create an admin user for testing.
 
@@ -63,7 +78,7 @@ def create_admin_user(client: TestClient, email: str = "admin@test.com", passwor
     Args:
         client: TestClient instance
         email: Admin email
-        password: Admin password
+        password: Admin password (must meet password requirements)
 
     Returns:
         User data dictionary with id, email, role, etc.
@@ -92,14 +107,14 @@ def create_admin_user(client: TestClient, email: str = "admin@test.com", passwor
     return user_data
 
 
-def get_auth_headers(client: TestClient, email: str = "user@test.com", password: str = "testpass123", role: str = "user") -> dict:
+def get_auth_headers(client: TestClient, email: str = "user@test.com", password: str = "TestPass123!", role: str = "user") -> dict:
     """
     Helper function to get authentication headers for testing.
 
     Args:
         client: TestClient instance
         email: User email
-        password: User password
+        password: User password (must meet password requirements)
         role: User role ('user' or 'admin')
 
     Returns:
