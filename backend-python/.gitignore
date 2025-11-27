@@ -55,3 +55,14 @@ htmlcov/
 
 # Docker
 .dockerignore
+
+# Implementation documentation (local only - do not commit)
+IMPLEMENTATION_COMPLETE.md
+QUICKSTART.md
+README_IMPLEMENTATION.md
+SECURITY_FLOW_DIAGRAMS.md
+SECURITY_UPDATE.md
+USER_MANAGEMENT_UPDATE.md
+QUESTIONS_ANSWERED.md
+verify_implementation.py
+demo_security.sh
