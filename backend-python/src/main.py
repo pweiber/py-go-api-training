@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from src.core.config import settings
 from src.core.database import init_db
-from src.api.v1.endpoints import books, auth
+from src.api.v1.endpoints import books, auth, users
 
 
 app = FastAPI(
@@ -47,6 +47,7 @@ async def root():
 # Include routers
 app.include_router(auth.router, tags=["authentication"])
 app.include_router(books.router, tags=["books"])
+app.include_router(users.router, tags=["users"])
 
 if __name__ == "__main__":
     import uvicorn
