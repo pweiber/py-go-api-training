@@ -13,7 +13,7 @@ from src.core.auth import (
     get_current_user,
     ACCESS_TOKEN_EXPIRE_MINUTES
 )
-from src.models.user import User
+from src.models.user import User, UserRole
 from src.schemas.user import UserCreate, UserLogin, UserResponse, UserUpdate, Token
 
 router = APIRouter()
@@ -25,9 +25,10 @@ async def register_user(user: UserCreate, db: Session = Depends(get_db)):
     Register a new user.
     
     Creates a new user account with email validation and password hashing.
-    
+    All new users are registered with 'user' role by default.
+
     Args:
-        user: User registration data (email, password, role)
+        user: User registration data (email, password)
         db: Database session dependency
         
     Returns:
@@ -40,8 +41,7 @@ async def register_user(user: UserCreate, db: Session = Depends(get_db)):
         POST /register
         {
             "email": "user@example.com",
-            "password": "testpassword123",
-            "role": "user"
+            "password": "testpassword123"
         }
         
     Example Response (201):
@@ -61,11 +61,11 @@ async def register_user(user: UserCreate, db: Session = Depends(get_db)):
             detail=f"User with email {user.email} already exists"
         )
     
-    # Create new user with hashed password
+    # Create new user with hashed password - always force role to USER
     db_user = User(
         email=user.email,
         hashed_password=hash_password(user.password),
-        role=user.role,
+        role=UserRole.USER,  # Force all new registrations to be regular users
         is_active=True
     )
     
