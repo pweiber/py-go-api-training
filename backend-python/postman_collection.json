@@ -47,9 +47,9 @@
                     "raw": "{\n    \"title\": \"The Python Guide\",\n    \"author\": \"John Doe\",\n    \"isbn\": \"978-0123456789\",\n    \"published_date\": \"2023-01-15\",\n    \"description\": \"A comprehensive guide to Python programming\"\n}"
                 },
                 "url": {
-                    "raw": "{{base_url}}/books",
+                    "raw": "{{base_url}}/api/v1/books",
                     "host": ["{{base_url}}"],
-                    "path": ["books"]
+                    "path": ["api", "v1", "books"]
                 }
             },
             "event": [
@@ -79,9 +79,9 @@
                 "method": "GET",
                 "header": [],
                 "url": {
-                    "raw": "{{base_url}}/books",
+                    "raw": "{{base_url}}/api/v1/books",
                     "host": ["{{base_url}}"],
-                    "path": ["books"]
+                    "path": ["api", "v1", "books"]
                 }
             },
             "event": [
@@ -108,9 +108,9 @@
                 "method": "GET",
                 "header": [],
                 "url": {
-                    "raw": "{{base_url}}/books/{{book_id}}",
+                    "raw": "{{base_url}}/api/v1/books/{{book_id}}",
                     "host": ["{{base_url}}"],
-                    "path": ["books", "{{book_id}}"]
+                    "path": ["api", "v1", "books", "{{book_id}}"]
                 }
             },
             "event": [
@@ -146,9 +146,9 @@
                     "raw": "{\n    \"title\": \"The Advanced Python Guide\",\n    \"description\": \"An advanced guide to Python programming with best practices\"\n}"
                 },
                 "url": {
-                    "raw": "{{base_url}}/books/{{book_id}}",
+                    "raw": "{{base_url}}/api/v1/books/{{book_id}}",
                     "host": ["{{base_url}}"],
-                    "path": ["books", "{{book_id}}"]
+                    "path": ["api", "v1", "books", "{{book_id}}"]
                 }
             },
             "event": [
@@ -175,9 +175,9 @@
                 "method": "DELETE",
                 "header": [],
                 "url": {
-                    "raw": "{{base_url}}/books/{{book_id}}",
+                    "raw": "{{base_url}}/api/v1/books/{{book_id}}",
                     "host": ["{{base_url}}"],
-                    "path": ["books", "{{book_id}}"]
+                    "path": ["api", "v1", "books", "{{book_id}}"]
                 }
             },
             "event": [

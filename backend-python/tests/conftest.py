@@ -9,7 +9,6 @@ from sqlalchemy.pool import StaticPool
 
 from src.main import app
 from src.core.database import Base, get_db
-from src.core.rate_limit import limiter
 
 # Create in-memory SQLite database for testing
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
@@ -36,29 +35,15 @@ def client():
     """
     Create a fresh test database and client for each test.
     """
-    # Create tables using test database
+    # Create tables
     Base.metadata.create_all(bind=engine)
 
     # Override the dependency
     app.dependency_overrides[get_db] = override_get_db
 
-    # Disable the startup event that tries to connect to PostgreSQL
-    # Store original startup handlers and clear them
-    original_on_startup = app.router.on_startup.copy()
-    app.router.on_startup.clear()
-
-    # Disable rate limiting for tests
-    limiter.enabled = False
-
     # Create test client
     with TestClient(app) as test_client:
         yield test_client
-
-    # Re-enable rate limiting
-    limiter.enabled = True
-
-    # Restore original startup handlers
-    app.router.on_startup = original_on_startup
 
     # Clean up - drop all tables after each test
     Base.metadata.drop_all(bind=engine)
@@ -67,77 +52,25 @@ def client():
     app.dependency_overrides.clear()
 
 
-def create_admin_user(client: TestClient, email: str = "admin@test.com", password: str = "Admin123!") -> dict:
-    """
-    Helper function to create an admin user for testing.
-
-    Since normal registration now forces UserRole.USER, this function:
-    1. Registers a regular user
-    2. Directly updates their role in the database to ADMIN
-
-    Args:
-        client: TestClient instance
-        email: Admin email
-        password: Admin password (must meet password requirements)
-
-    Returns:
-        User data dictionary with id, email, role, etc.
-    """
-    from src.models.user import User, UserRole
-
-    # Register as regular user
-    response = client.post("/register", json={
-        "email": email,
-        "password": password
-    })
-    assert response.status_code == 201
-    user_data = response.json()
-
-    # Directly update role in database (bypass API for testing)
-    db = TestingSessionLocal()
-    try:
-        user = db.query(User).filter(User.id == user_data["id"]).first()
-        user.role = UserRole.ADMIN
-        db.commit()
-        db.refresh(user)
-        user_data["role"] = user.role.value
-    finally:
-        db.close()
-
-    return user_data
+@pytest.fixture
+def sample_user_data():
+    """Sample user data for testing."""
+    return {
+        "email": "test@example.com",
+        "password": "testpassword123",
+        "role": "user"
+    }
 
 
-def get_auth_headers(client: TestClient, email: str = "user@test.com", password: str = "TestPass123!", role: str = "user") -> dict:
-    """
-    Helper function to get authentication headers for testing.
-
-    Args:
-        client: TestClient instance
-        email: User email
-        password: User password (must meet password requirements)
-        role: User role ('user' or 'admin')
-
-    Returns:
-        Headers dictionary with Authorization Bearer token
-    """
-    # If admin role requested, create admin user
-    if role == "admin":
-        create_admin_user(client, email, password)
-    else:
-        # Register regular user
-        client.post("/register", json={
-            "email": email,
-            "password": password
-        })
-
-    # Login to get token
-    response = client.post("/login", json={
-        "email": email,
-        "password": password
-    })
-    assert response.status_code == 200
-    token = response.json()["access_token"]
-
-    return {"Authorization": f"Bearer {token}"}
+@pytest.fixture
+def sample_book_data():
+    """Sample book data for testing."""
+    return {
+        "title": "Test Book",
+        "author": "Test Author",
+        "isbn": "978-0123456789",
+        "published_date": "2023-01-15",
+        "description": "A test book"
+    }
 
 

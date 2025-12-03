@@ -1,15 +1,24 @@
 """
 Main FastAPI application entry point.
+
+This module initializes the FastAPI application, registers middleware,
+exception handlers, and routes.
 """
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from slowapi import _rate_limit_exceeded_handler
-from slowapi.errors import RateLimitExceeded
+from sqlalchemy.exc import IntegrityError, DataError, SQLAlchemyError, OperationalError
 
 from src.core.config import settings
 from src.core.database import init_db
-from src.core.rate_limit import limiter
-from src.api.v1.endpoints import books, auth, users
+from src.core.exceptions import (
+    integrity_error_handler,
+    data_error_handler,
+    operational_error_handler,
+    sqlalchemy_error_handler,
+    database_exception_handler,
+    DatabaseException,
+)
+from src.api.v1.endpoints import books
 
 
 app = FastAPI(
@@ -20,9 +29,29 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
-# Add rate limiter state and exception handler
-app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+# ============================================================================
+# EXCEPTION HANDLERS REGISTRATION
+# ============================================================================
+# Register in order of specificity (most specific first, most general last)
+
+# Most specific: Handle integrity errors (unique constraints, foreign keys, etc.)
+app.add_exception_handler(IntegrityError, integrity_error_handler)
+
+# Handle data errors (invalid types, values too long, etc.)
+app.add_exception_handler(DataError, data_error_handler)
+
+# Handle operational errors (connection issues, timeouts, etc.)
+app.add_exception_handler(OperationalError, operational_error_handler)
+
+# Handle our custom database exceptions
+app.add_exception_handler(DatabaseException, database_exception_handler)
+
+# Most general: Catch-all for any other SQLAlchemy errors
+app.add_exception_handler(SQLAlchemyError, sqlalchemy_error_handler)
+
+# ============================================================================
+# MIDDLEWARE CONFIGURATION
+# ============================================================================
 
 # CORS middleware configuration
 app.add_middleware(
@@ -33,28 +62,50 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ============================================================================
+# HEALTH CHECK AND ROOT ENDPOINTS
+# ============================================================================
 
-@app.on_event("startup")
-async def startup_event():
-    """Initialize database tables on startup."""
-    init_db()
-
-# Health check endpoint
 @app.get("/health")
 async def health_check():
-    """Health check endpoint for monitoring."""
-    return {"status": "healthy", "service": "intern-training-api"}
+    """
+    Health check endpoint for monitoring and load balancers.
 
-# Root endpoint
+    Returns:
+        dict: Service health status
+    """
+    return {
+        "status": "healthy",
+        "service": "intern-training-api",
+        "version": "1.0.0"
+    }
+
+
 @app.get("/")
 async def root():
-    """Root endpoint with API information."""
-    return {"message": "Book Store API"}
+    """
+    Root endpoint with API information.
 
-# Include routers
-app.include_router(auth.router, tags=["authentication"])
-app.include_router(books.router, tags=["books"])
-app.include_router(users.router, tags=["users"])
+    Returns:
+        dict: API welcome message and documentation links
+    """
+    return {
+        "message": "Book Store API",
+        "version": "1.0.0",
+        "docs": "/docs",
+        "health": "/health"
+    }
+
+# ============================================================================
+# ROUTER REGISTRATION
+# ============================================================================
+
+# Include API routers
+app.include_router(books.router, prefix="/api/v1", tags=["books"])
+
+# ============================================================================
+# APPLICATION STARTUP
+# ============================================================================
 
 if __name__ == "__main__":
     import uvicorn
