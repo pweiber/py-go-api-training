@@ -66,3 +66,6 @@ USER_MANAGEMENT_UPDATE.md
 QUESTIONS_ANSWERED.md
 verify_implementation.py
 demo_security.sh
+*.xml
+TEST_*.md
+CRUD_TEST_REPORT.md
