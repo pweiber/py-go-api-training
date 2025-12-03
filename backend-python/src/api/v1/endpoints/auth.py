@@ -210,17 +210,11 @@ async def update_user_profile(
     """
     # Check if email is being updated and if it already exists
     if user_update.email and user_update.email != current_user.email:
-        # Require current password for email change
-        if not user_update.current_password:
+        if not user_update.current_password or not verify_password(user_update.current_password,
+                                                                   current_user.hashed_password):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Current password required to change email"
-            )
-        # Verify the current password is correct
-        if not verify_password(user_update.current_password, current_user.hashed_password):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Current password is incorrect"
+                detail="Incorrect or missing current password for email change."
             )
         existing_user = db.query(User).filter(User.email == user_update.email).first()
         if existing_user:
