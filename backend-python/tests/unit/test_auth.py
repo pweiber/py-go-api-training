@@ -1,8 +1,7 @@
 """
 Unit tests for Authentication endpoints.
 """
-import pytest
-from datetime import datetime
+
 from fastapi.testclient import TestClient
 
 # Standard strong password for tests
