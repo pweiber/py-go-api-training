@@ -8,7 +8,6 @@ import subprocess
 import sys
 import os
 from datetime import datetime
-import json
 
 def run_command(cmd, description):
     """Run a command and return output"""
