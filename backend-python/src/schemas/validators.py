@@ -1,5 +1,6 @@
 """Reusable Pydantic validators for schema validation."""
 
+import re
 
 def validate_isbn(v: str | None) -> str | None:
     """
@@ -44,3 +45,30 @@ def validate_isbn(v: str | None) -> str | None:
         raise ValueError('ISBN must contain only digits (ISBN-10 may end with X)')
 
     return cleaned
+
+def validate_password_strength(v: str | None) -> str | None:
+    """
+    Validate password strength requirements.
+
+    Args:
+        v: Password string or None
+
+    Returns:
+        The password if valid, None if input is None
+
+    Raises:
+        ValueError: If password doesn't meet requirements
+    """
+    if v is None:
+        return v
+    if len(v) < 8:
+        raise ValueError("Password must be at least 8 characters long")
+    if not re.search(r'[a-z]', v):
+        raise ValueError("Password must contain at least one lowercase letter")
+    if not re.search(r'[A-Z]', v):
+        raise ValueError("Password must contain at least one uppercase letter")
+    if not re.search(r'\d', v):
+        raise ValueError("Password must contain at least one digit")
+    if not re.search(r'[!@#$%^&*(),.?":{}|<>]', v):
+        raise ValueError("Password must contain at least one special character")
+    return v
