@@ -27,8 +27,8 @@ def test_register_user(client):
     assert "hashed_password" not in data  # Password should not be in response
 
 
-def test_register_admin(client):
-    """Test admin registration."""
+def test_register_forces_user_role(client):
+    """Test that registration with 'admin' role still creates a 'user'"""
     admin_data = {
         "email": "admin@example.com",
         "password": STRONG_PASSWORD,
