@@ -11,7 +11,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from src.core.database import engine, init_db, Base, SessionLocal
-from src.models import Book, User
+from src.models import User
 from src.models.user import UserRole
 from src.core.auth import hash_password
 from sqlalchemy import text
