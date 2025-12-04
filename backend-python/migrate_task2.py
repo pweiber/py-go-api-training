@@ -30,23 +30,31 @@ def run_migration():
         connection.execute(text("""
             CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
         """))
-        
+
         # Add created_by column to books table (if it doesn't exist)
         print("Adding created_by column to books table...")
         connection.execute(text("""
             DO $$
             BEGIN
+                -- Add created_by column if it does not exist
                 IF NOT EXISTS (
                     SELECT 1 FROM information_schema.columns 
                     WHERE table_name='books' AND column_name='created_by'
                 ) THEN
                     ALTER TABLE books ADD COLUMN created_by INTEGER;
-                    ALTER TABLE books ADD CONSTRAINT fk_books_created_by 
+                END IF;
+
+                -- Add foreign key constraint if it does not exist
+                IF NOT EXISTS (
+                    SELECT 1 FROM information_schema.table_constraints
+                    WHERE table_name='books' AND constraint_name='fk_books_created_by'
+                ) THEN
+                    ALTER TABLE books ADD CONSTRAINT fk_books_created_by
                         FOREIGN KEY (created_by) REFERENCES users(id);
                 END IF;
             END $$;
         """))
-        
+
         print("Migration completed successfully!")
         print("\nNew tables and columns:")
         print("  - users (id, email, hashed_password, is_active, role, created_at)")
