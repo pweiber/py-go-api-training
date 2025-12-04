@@ -9,6 +9,7 @@ from sqlalchemy.pool import StaticPool
 
 from src.main import app
 from src.core.database import Base, get_db
+from src.models.user import User
 
 # Create in-memory SQLite database for testing
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
@@ -74,3 +75,79 @@ def sample_book_data():
     }
 
 
+def create_admin_user(client: TestClient, email: str, password: str) -> dict:
+    """
+    Helper to create an admin user by registering and directly promoting in database.
+
+    Args:
+        client: FastAPI test client
+        email: Admin email
+        password: Admin password
+
+    Returns:
+        dict: User data with id, email, role
+    """
+    # Register the user
+    response = client.post("/register", json={
+        "email": email,
+        "password": password
+    })
+    assert response.status_code == 201
+    user_data = response.json()
+
+    # Directly promote in database (bypasses API security)
+    db = TestingSessionLocal()
+    try:
+        user = db.query(User).filter(User.id == user_data["id"]).first()
+        if user:
+            user.role = "admin"
+            db.commit()
+            db.refresh(user)
+            return {
+                "id": user.id,
+                "email": user.email,
+                "role": user.role
+            }
+    finally:
+        db.close()
+
+    return user_data
+
+
+def get_auth_headers(client: TestClient, email: str, password: str, role: str = "user") -> dict:
+    """
+    Helper to register/create user and return authentication headers.
+
+    Args:
+        client: FastAPI test client
+        email: User email
+        password: User password
+        role: User role - 'user' or 'admin' (default: 'user')
+
+    Returns:
+        dict: Headers with JWT Bearer token for authenticated requests
+
+    Example:
+        headers = get_auth_headers(client, "user@test.com", "Pass123!", "admin")
+        response = client.get("/users", headers=headers)
+    """
+    if role == "admin":
+        # Create admin user using helper
+        create_admin_user(client, email, password)
+    else:
+        # Register regular user
+        response = client.post("/register", json={
+            "email": email,
+            "password": password
+        })
+        assert response.status_code == 201
+
+    # Login to get token
+    login_response = client.post("/login", json={
+        "email": email,
+        "password": password
+    })
+    assert login_response.status_code == 200
+    token = login_response.json()["access_token"]
+
+    return {"Authorization": f"Bearer {token}"}
