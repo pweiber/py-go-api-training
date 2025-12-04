@@ -31,7 +31,7 @@ class UserCreate(BaseModel):
         """Validate password strength."""
         result = validate_password_strength(v)
         if result is None:
-            raise ValueError("Passwird is required")
+            raise ValueError("Password is required")
         return result
 
     class Config:
@@ -121,8 +121,8 @@ class Token(BaseModel):
 
 class TokenData(BaseModel):
     """Schema for decoded token data."""
-    email: Optional[str] = None
-    user_id: Optional[int] = None
+    email: str = Field(..., description="User email from JWT token")
+    user_id: int = Field(..., description="User ID from JWT token")
 
 
 class UserRoleUpdate(BaseModel):
