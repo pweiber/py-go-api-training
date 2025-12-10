@@ -68,7 +68,9 @@ async def update_user_role(
     
     # Prevent demoting the last admin
     if user.role == UserRole.ADMIN and role_update.role == UserRole.USER:
-        admin_count = db.query(User).filter(User.role == UserRole.ADMIN).count()
+        # Use with_for_update() to lock rows and prevent race conditions
+        # We query for IDs to minimize data transfer while still acquiring the locks
+        admin_count = db.query(User.id).filter(User.role == UserRole.ADMIN).with_for_update().count()
         if admin_count <= 1:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -85,48 +87,49 @@ async def update_user_role(
 
 @router.get("", response_model=list[UserResponse], status_code=status.HTTP_200_OK)
 async def list_users(
+    skip: int = 0,
+    limit: int = 100,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_admin_user)
 ):
     """
-    List all users (admin-only).
-    
-    Returns a list of all registered users in the system.
-    Only users with admin role can access this endpoint.
-    
-    Args:
-        db: Database session dependency
-        current_user: Current authenticated admin user
-        
-    Returns:
-        List of all users
-        
-    Requires:
-        Authentication: Bearer token with admin role
-        
-    Example Request:
-        GET /users
-        Headers: Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-        
-    Example Response (200):
-        [
-            {
-                "id": 1,
-                "email": "admin@example.com",
-                "is_active": true,
-                "role": "admin",
-                "created_at": "2023-09-12T10:30:00.123456"
-            },
-            {
-                "id": 2,
-                "email": "user@example.com",
-                "is_active": true,
-                "role": "user",
-                "created_at": "2023-09-12T11:00:00.123456"
-            }
-        ]
-    """
-    users = db.query(User).all()
+List all users (admin-only) with pagination.
+
+Returns a paginated list of all registered users in the system.
+Only users with admin role can access this endpoint.
+
+Args:
+    skip: Number of records to skip (default: 0)
+    limit: Maximum number of records to return (default: 100, max: 100)
+    db: Database session dependency
+    current_user: Current authenticated admin user
+
+Returns:
+    List of users (paginated)
+
+Requires:
+    Authentication: Bearer token with admin role
+
+Example Request:
+    GET /users?skip=0&limit=10
+    Headers: Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+Example Response (200):
+    [
+        {
+            "id": 1,
+            "email": "admin@example.com",
+            "is_active": true,
+            "role": "admin",
+            "created_at": "2023-09-12T10:30:00.123456"
+        }
+    ]
+"""
+
+    # Cap the limit to prevent excessive data retrieval
+    limit = min(limit, 100)
+
+    users = db.query(User).offset(skip).limit(limit).all()
     return users
 
 
