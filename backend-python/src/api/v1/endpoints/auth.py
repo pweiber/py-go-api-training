@@ -43,7 +43,7 @@ async def register_user(user: UserCreate, db: Session = Depends(get_db)):
         POST /register
         {
             "email": "user@example.com",
-            "password": "testpassword123"
+            "password": "TestPassword123!"
         }
         
     Example Response (201):
@@ -100,7 +100,7 @@ async def login(request: Request, user_credentials: UserLogin, db: Session = Dep
         POST /login
         {
             "email": "user@example.com",
-            "password": "testpassword123"
+            "password": "TestPassword123!"
         }
         
     Example Response (200):
@@ -208,14 +208,17 @@ async def update_user_profile(
             "created_at": "2023-09-12T10:30:00.123456"
         }
     """
-    # Check if email is being updated and if it already exists
-    if user_update.email and user_update.email != current_user.email:
+    # Check if sensitive fields are being updated (email or password)
+    if (user_update.email and user_update.email != current_user.email) or user_update.password:
         if not user_update.current_password or not verify_password(user_update.current_password,
                                                                    current_user.hashed_password):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Incorrect or missing current password for email change."
+                detail="Incorrect or missing current password for profile update."
             )
+
+    # Check if email is being updated and if it already exists
+    if user_update.email and user_update.email != current_user.email:
         existing_user = db.query(User).filter(User.email == user_update.email).first()
         if existing_user:
             raise HTTPException(
