@@ -5,6 +5,7 @@ import pytest
 from datetime import date
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
+from tests.conftest import get_auth_headers, STRONG_PASSWORD
 
 
 def test_health_check(client):
@@ -19,6 +20,8 @@ def test_health_check(client):
 
 def test_create_book_duplicate_isbn(client):
     """Test creating a book with duplicate ISBN returns 400."""
+    auth_headers = get_auth_headers(client, "author@example.com", STRONG_PASSWORD)
+    
     book_data = {
         "title": "Test Book",
         "author": "Test Author",
@@ -27,11 +30,11 @@ def test_create_book_duplicate_isbn(client):
         "description": "Test description"
     }
     # Create first book
-    response = client.post("/api/v1/books", json=book_data)
+    response = client.post("/api/v1/books", json=book_data, headers=auth_headers)
     assert response.status_code == 201
     
     # Try to create duplicate
-    response = client.post("/api/v1/books", json=book_data)
+    response = client.post("/api/v1/books", json=book_data, headers=auth_headers)
     assert response.status_code == 400
     assert "already exists" in response.json()["detail"]
 
@@ -39,6 +42,7 @@ def test_create_book_duplicate_isbn(client):
 def test_get_all_books(client):
     """Test getting all books."""
     # Create a test book first
+    auth_headers = get_auth_headers(client, "reader@example.com", STRONG_PASSWORD)
     book_data = {
         "title": "Test Book",
         "author": "Test Author",
@@ -46,7 +50,7 @@ def test_get_all_books(client):
         "published_date": "2023-01-15",
         "description": "Test description"
     }
-    client.post("/api/v1/books", json=book_data)
+    client.post("/api/v1/books", json=book_data, headers=auth_headers)
 
     response = client.get("/api/v1/books")
     assert response.status_code == 200
@@ -58,6 +62,7 @@ def test_get_all_books(client):
 def test_get_book_by_id(client):
     """Test getting a specific book by ID."""
     # Create a test book
+    auth_headers = get_auth_headers(client, "finder@example.com", STRONG_PASSWORD)
     book_data = {
         "title": "Specific Book",
         "author": "Specific Author",
@@ -65,7 +70,7 @@ def test_get_book_by_id(client):
         "published_date": "2023-01-15",
         "description": "Specific description"
     }
-    create_response = client.post("/api/v1/books", json=book_data)
+    create_response = client.post("/api/v1/books", json=book_data, headers=auth_headers)
     book_id = create_response.json()["id"]
     
     response = client.get(f"/api/v1/books/{book_id}")
@@ -85,6 +90,7 @@ def test_get_book_by_id_not_found(client):
 def test_update_book(client):
     """Test updating a book."""
     # Create a test book
+    auth_headers = get_auth_headers(client, "updater@example.com", STRONG_PASSWORD)
     book_data = {
         "title": "Original Title",
         "author": "Original Author",
@@ -92,7 +98,7 @@ def test_update_book(client):
         "published_date": "2023-01-15",
         "description": "Original description"
     }
-    create_response = client.post("/api/v1/books", json=book_data)
+    create_response = client.post("/api/v1/books", json=book_data, headers=auth_headers)
     book_id = create_response.json()["id"]
     
     # Update the book
@@ -100,7 +106,7 @@ def test_update_book(client):
         "title": "Updated Title",
         "description": "Updated description"
     }
-    response = client.put(f"/api/v1/books/{book_id}", json=update_data)
+    response = client.put(f"/api/v1/books/{book_id}", json=update_data, headers=auth_headers)
     assert response.status_code == 200
     data = response.json()
     assert data["title"] == "Updated Title"
@@ -110,14 +116,16 @@ def test_update_book(client):
 
 def test_update_book_not_found(client):
     """Test updating a non-existent book returns 404."""
+    auth_headers = get_auth_headers(client, "updater@example.com", STRONG_PASSWORD)
     update_data = {"title": "New Title"}
-    response = client.put("/api/v1/books/99999", json=update_data)
+    response = client.put("/api/v1/books/99999", json=update_data, headers=auth_headers)
     assert response.status_code == 404
 
 
 def test_delete_book(client):
     """Test deleting a book."""
     # Create a test book
+    user_headers = get_auth_headers(client, "creator@example.com", STRONG_PASSWORD)
     book_data = {
         "title": "Book to Delete",
         "author": "Delete Author",
@@ -125,11 +133,12 @@ def test_delete_book(client):
         "published_date": "2023-01-15",
         "description": "Will be deleted"
     }
-    create_response = client.post("/api/v1/books", json=book_data)
+    create_response = client.post("/api/v1/books", json=book_data, headers=user_headers)
     book_id = create_response.json()["id"]
     
-    # Delete the book
-    response = client.delete(f"/api/v1/books/{book_id}")
+    # Delete the book (requires admin)
+    admin_headers = get_auth_headers(client, "admin@example.com", STRONG_PASSWORD, role="admin")
+    response = client.delete(f"/api/v1/books/{book_id}", headers=admin_headers)
     assert response.status_code == 200
     assert response.json() == {"message": "Book deleted successfully"}
     
@@ -140,6 +149,7 @@ def test_delete_book(client):
 
 def test_delete_book_not_found(client):
     """Test deleting a non-existent book returns 404."""
-    response = client.delete("/api/v1/books/99999")
+    admin_headers = get_auth_headers(client, "admin@example.com", STRONG_PASSWORD, role="admin")
+    response = client.delete("/api/v1/books/99999", headers=admin_headers)
     assert response.status_code == 404
 
