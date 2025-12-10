@@ -10,6 +10,9 @@ from sqlalchemy.exc import IntegrityError, DataError, SQLAlchemyError, Operation
 
 from src.core.config import settings
 from src.core.database import init_db
+from src.core.rate_limit import limiter
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 from src.core.exceptions import (
     integrity_error_handler,
     data_error_handler,
@@ -28,6 +31,10 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc",
 )
+
+# Register Limiter
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # ============================================================================
 # EXCEPTION HANDLERS REGISTRATION
