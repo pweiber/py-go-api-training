@@ -123,6 +123,7 @@ class TokenData(BaseModel):
     """Schema for decoded token data."""
     email: str = Field(..., description="User email from JWT token")
     user_id: int = Field(..., description="User ID from JWT token")
+    role: str = Field(..., description="User role from JWT token")
 
 
 class UserRoleUpdate(BaseModel):
