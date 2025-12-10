@@ -92,6 +92,20 @@ backend-python/
    uvicorn src.main:app --reload
    ```
 
+### Database Migrations
+
+This project uses [Alembic](https://alembic.sqlalchemy.org/) for database migrations.
+
+1. **Initialize/Upgrade database:**
+   ```bash
+   alembic upgrade head
+   ```
+
+2. **Create a new migration:**
+   ```bash
+   alembic revision --autogenerate -m "Description of changes"
+   ```
+
 ## 🌐 API Endpoints
 
 ### API Versioning

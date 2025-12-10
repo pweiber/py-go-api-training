@@ -10,6 +10,9 @@ from sqlalchemy.exc import IntegrityError, DataError, SQLAlchemyError, Operation
 
 from src.core.config import settings
 from src.core.database import init_db
+from src.core.rate_limit import limiter
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 from src.core.exceptions import (
     integrity_error_handler,
     data_error_handler,
@@ -18,7 +21,7 @@ from src.core.exceptions import (
     database_exception_handler,
     DatabaseException,
 )
-from src.api.v1.endpoints import books
+from src.api.v1.endpoints import books, auth, users
 
 
 app = FastAPI(
@@ -28,6 +31,10 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc",
 )
+
+# Register Limiter
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # ============================================================================
 # EXCEPTION HANDLERS REGISTRATION
@@ -102,6 +109,8 @@ async def root():
 
 # Include API routers
 app.include_router(books.router, prefix="/api/v1", tags=["books"])
+app.include_router(auth.router, tags=["auth"])
+app.include_router(users.router, tags=["users"])
 
 # ============================================================================
 # APPLICATION STARTUP

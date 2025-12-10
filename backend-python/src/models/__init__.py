@@ -1,8 +1,5 @@
 """Database models package."""
-# TODO: Import your models here as you create them
-# from src.models.user import User
-# from src.models.book import Book
-
 from src.models.book import Book
+from src.models.user import User, UserRole
 
-__all__ = ["Book"]
+__all__ = ["Book", "User", "UserRole"]

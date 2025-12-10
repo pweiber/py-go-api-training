@@ -11,7 +11,9 @@ from typing import List
 import logging
 
 from src.core.database import get_db
+from src.core.auth import get_current_user, get_admin_user
 from src.models.book import Book
+from src.models.user import User, UserRole
 from src.schemas.book import BookCreate, BookUpdate, BookResponse
 
 # Configure logger
@@ -83,23 +85,26 @@ async def get_book(book_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/books", response_model=BookResponse, status_code=status.HTTP_201_CREATED)
-async def create_book(book: BookCreate, db: Session = Depends(get_db)):
+async def create_book(
+    book: BookCreate, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """
     Create a new book.
     
-    This endpoint relies on database constraints to enforce ISBN uniqueness.
-    The UNIQUE constraint on the ISBN column will prevent duplicates, and
-    IntegrityError exceptions are caught and converted to appropriate HTTP responses.
-
+    Requires authentication. The creating user is recorded as the owner.
+    
     Args:
         book: Book data to create
         db: Database session dependency
+        current_user: Authenticated user creating the book
         
     Returns:
         Created book with ID
         
     Raises:
-        HTTPException: 400 if ISBN already exists or other constraint violated
+        HTTPException: 400 if ISBN already exists
         HTTPException: 500 if database error occurs
     """
     # Create new book instance
@@ -108,7 +113,8 @@ async def create_book(book: BookCreate, db: Session = Depends(get_db)):
         author=book.author,
         isbn=book.isbn,
         published_date=book.published_date,
-        description=book.description
+        description=book.description,
+        created_by=current_user.id
     )
     
     # Add to database with exception handling
@@ -117,7 +123,7 @@ async def create_book(book: BookCreate, db: Session = Depends(get_db)):
         db.commit()
         db.refresh(db_book)
 
-        logger.info(f"Successfully created book with ISBN {book.isbn} (ID: {db_book.id})")
+        logger.info(f"Successfully created book with ISBN {book.isbn} (ID: {db_book.id}) by User {current_user.id}")
         return db_book
 
     except IntegrityError as e:
@@ -148,25 +154,30 @@ async def create_book(book: BookCreate, db: Session = Depends(get_db)):
 
 
 @router.put("/books/{book_id}", response_model=BookResponse, status_code=status.HTTP_200_OK)
-async def update_book(book_id: int, book: BookUpdate, db: Session = Depends(get_db)):
+async def update_book(
+    book_id: int, 
+    book: BookUpdate, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """
     Update an existing book.
     
-    This endpoint relies on database constraints to enforce ISBN uniqueness.
-    The book existence is checked first, then updates are applied and committed
-    with exception handling for constraint violations.
-
+    Requires authentication. Only the Owner or an Admin can update a book.
+    
     Args:
         book_id: The ID of the book to update
-        book: Book data to update (only provided fields will be updated)
+        book: Book data to update
         db: Database session dependency
+        current_user: Authenticated user requesting update
         
     Returns:
         Updated book
         
     Raises:
         HTTPException: 404 if book not found
-        HTTPException: 400 if ISBN already exists for another book or other constraint violated
+        HTTPException: 403 if user is not authorized to update this book
+        HTTPException: 400 if ISBN conflict
         HTTPException: 500 if database error occurs
     """
     # Find the book
@@ -176,6 +187,13 @@ async def update_book(book_id: int, book: BookUpdate, db: Session = Depends(get_
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Book with id {book_id} not found"
+        )
+    
+    # Authorization check: Admin OR Owner
+    if current_user.role != UserRole.ADMIN and db_book.created_by != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only update your own books"
         )
     
     # Update only provided fields
@@ -219,13 +237,20 @@ async def update_book(book_id: int, book: BookUpdate, db: Session = Depends(get_
 
 
 @router.delete("/books/{book_id}", status_code=status.HTTP_200_OK)
-async def delete_book(book_id: int, db: Session = Depends(get_db)):
+async def delete_book(
+    book_id: int, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_admin_user)
+):
     """
     Delete a book.
+    
+    Requires Admin privileges.
     
     Args:
         book_id: The ID of the book to delete
         db: Database session dependency
+        current_user: Authenticated admin user
         
     Returns:
         Success message

@@ -1,0 +1,350 @@
+{
+    "info": {
+        "name": "Task 2 - Authentication & User Management",
+        "description": "Test collection for authenticated Book Store API",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "item": [
+        {
+            "name": "Register User",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n    \"email\": \"user@example.com\",\n    \"password\": \"TestPassword123!\",\n    \"role\": \"user\"\n}"
+                },
+                "url": {
+                    "raw": "{{base_url}}/register",
+                    "host": ["{{base_url}}"],
+                    "path": ["register"]
+                }
+            },
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test('Status code is 201', function () {",
+                            "    pm.response.to.have.status(201);",
+                            "});",
+                            "",
+                            "pm.test('User registered successfully', function () {",
+                            "    const responseJson = pm.response.json();",
+                            "    pm.expect(responseJson.email).to.eql('user@example.com');",
+                            "    pm.expect(responseJson.role).to.eql('user');",
+                            "});"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Register Admin",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n    \"email\": \"admin@example.com\",\n    \"password\": \"AdminPassword123!\",\n    \"role\": \"admin\"\n}"
+                },
+                "url": {
+                    "raw": "{{base_url}}/register",
+                    "host": ["{{base_url}}"],
+                    "path": ["register"]
+                }
+            },
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test('Status code is 201', function () {",
+                            "    pm.response.to.have.status(201);",
+                            "});",
+                            "",
+                            "pm.test('Admin registered successfully', function () {",
+                            "    const responseJson = pm.response.json();",
+                            "    pm.expect(responseJson.email).to.eql('admin@example.com');",
+                            "    pm.expect(responseJson.role).to.eql('admin');",
+                            "});"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Login User",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n    \"email\": \"user@example.com\",\n    \"password\": \"TestPassword123!\"\n}"
+                },
+                "url": {
+                    "raw": "{{base_url}}/login",
+                    "host": ["{{base_url}}"],
+                    "path": ["login"]
+                }
+            },
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test('Status code is 200', function () {",
+                            "    pm.response.to.have.status(200);",
+                            "});",
+                            "",
+                            "pm.test('Token received', function () {",
+                            "    const responseJson = pm.response.json();",
+                            "    pm.expect(responseJson.access_token).to.exist;",
+                            "    pm.expect(responseJson.token_type).to.eql('bearer');",
+                            "    pm.globals.set('user_token', responseJson.access_token);",
+                            "});"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Login Admin",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n    \"email\": \"admin@example.com\",\n    \"password\": \"AdminPassword123!\"\n}"
+                },
+                "url": {
+                    "raw": "{{base_url}}/login",
+                    "host": ["{{base_url}}"],
+                    "path": ["login"]
+                }
+            },
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test('Status code is 200', function () {",
+                            "    pm.response.to.have.status(200);",
+                            "});",
+                            "",
+                            "pm.test('Admin token received', function () {",
+                            "    const responseJson = pm.response.json();",
+                            "    pm.globals.set('admin_token', responseJson.access_token);",
+                            "});"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Get Current User Profile",
+            "request": {
+                "method": "GET",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{user_token}}"
+                    }
+                ],
+                "url": {
+                    "raw": "{{base_url}}/me",
+                    "host": ["{{base_url}}"],
+                    "path": ["me"]
+                }
+            },
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test('Status code is 200', function () {",
+                            "    pm.response.to.have.status(200);",
+                            "});",
+                            "",
+                            "pm.test('User profile returned', function () {",
+                            "    const responseJson = pm.response.json();",
+                            "    pm.expect(responseJson.email).to.eql('user@example.com');",
+                            "});"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Create Book (Authenticated)",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    },
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{user_token}}"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n    \"title\": \"Authenticated Book\",\n    \"author\": \"Auth Author\",\n    \"isbn\": \"9781234567890\",\n    \"published_date\": \"2023-06-15\",\n    \"description\": \"A book created by authenticated user\"\n}"
+                },
+                "url": {
+                    "raw": "{{base_url}}/books",
+                    "host": ["{{base_url}}"],
+                    "path": ["books"]
+                }
+            },
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test('Status code is 201', function () {",
+                            "    pm.response.to.have.status(201);",
+                            "});",
+                            "",
+                            "pm.test('Book created with user ID', function () {",
+                            "    const responseJson = pm.response.json();",
+                            "    pm.expect(responseJson.created_by).to.exist;",
+                            "    pm.globals.set('book_id', responseJson.id);",
+                            "});"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Try Create Book (Unauthenticated)",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n    \"title\": \"Unauthorized Book\",\n    \"author\": \"No Auth\",\n    \"isbn\": \"9780987654321\",\n    \"published_date\": \"2023-06-15\"\n}"
+                },
+                "url": {
+                    "raw": "{{base_url}}/books",
+                    "host": ["{{base_url}}"],
+                    "path": ["books"]
+                }
+            },
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test('Status code is 403', function () {",
+                            "    pm.response.to.have.status(403);",
+                            "});"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Delete Book (Admin Only)",
+            "request": {
+                "method": "DELETE",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_token}}"
+                    }
+                ],
+                "url": {
+                    "raw": "{{base_url}}/books/{{book_id}}",
+                    "host": ["{{base_url}}"],
+                    "path": ["books", "{{book_id}}"]
+                }
+            },
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test('Status code is 200', function () {",
+                            "    pm.response.to.have.status(200);",
+                            "});",
+                            "",
+                            "pm.test('Book deleted by admin', function () {",
+                            "    const responseJson = pm.response.json();",
+                            "    pm.expect(responseJson.message).to.eql('Book deleted successfully');",
+                            "});"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Try Delete Book (Non-Admin)",
+            "request": {
+                "method": "DELETE",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{user_token}}"
+                    }
+                ],
+                "url": {
+                    "raw": "{{base_url}}/books/1",
+                    "host": ["{{base_url}}"],
+                    "path": ["books", "1"]
+                }
+            },
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test('Status code is 403', function () {",
+                            "    pm.response.to.have.status(403);",
+                            "});",
+                            "",
+                            "pm.test('Permission denied', function () {",
+                            "    const responseJson = pm.response.json();",
+                            "    pm.expect(responseJson.detail).to.include('permission');",
+                            "});"
+                        ]
+                    }
+                }
+            ]
+        }
+    ],
+    "variable": [
+        {
+            "key": "base_url",
+            "value": "http://localhost:8000"
+        }
+    ]
+}
+
