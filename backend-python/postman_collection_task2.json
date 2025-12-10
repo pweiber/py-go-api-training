@@ -17,7 +17,7 @@
                 ],
                 "body": {
                     "mode": "raw",
-                    "raw": "{\n    \"email\": \"user@example.com\",\n    \"password\": \"testpassword123\",\n    \"role\": \"user\"\n}"
+                    "raw": "{\n    \"email\": \"user@example.com\",\n    \"password\": \"TestPassword123!\",\n    \"role\": \"user\"\n}"
                 },
                 "url": {
                     "raw": "{{base_url}}/register",
@@ -56,7 +56,7 @@
                 ],
                 "body": {
                     "mode": "raw",
-                    "raw": "{\n    \"email\": \"admin@example.com\",\n    \"password\": \"adminpassword123\",\n    \"role\": \"admin\"\n}"
+                    "raw": "{\n    \"email\": \"admin@example.com\",\n    \"password\": \"AdminPassword123!\",\n    \"role\": \"admin\"\n}"
                 },
                 "url": {
                     "raw": "{{base_url}}/register",
@@ -95,7 +95,7 @@
                 ],
                 "body": {
                     "mode": "raw",
-                    "raw": "{\n    \"email\": \"user@example.com\",\n    \"password\": \"testpassword123\"\n}"
+                    "raw": "{\n    \"email\": \"user@example.com\",\n    \"password\": \"TestPassword123!\"\n}"
                 },
                 "url": {
                     "raw": "{{base_url}}/login",
@@ -135,7 +135,7 @@
                 ],
                 "body": {
                     "mode": "raw",
-                    "raw": "{\n    \"email\": \"admin@example.com\",\n    \"password\": \"adminpassword123\"\n}"
+                    "raw": "{\n    \"email\": \"admin@example.com\",\n    \"password\": \"AdminPassword123!\"\n}"
                 },
                 "url": {
                     "raw": "{{base_url}}/login",
