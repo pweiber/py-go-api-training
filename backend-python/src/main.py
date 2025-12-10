@@ -18,7 +18,7 @@ from src.core.exceptions import (
     database_exception_handler,
     DatabaseException,
 )
-from src.api.v1.endpoints import books
+from src.api.v1.endpoints import books, auth, users
 
 
 app = FastAPI(
@@ -102,6 +102,8 @@ async def root():
 
 # Include API routers
 app.include_router(books.router, prefix="/api/v1", tags=["books"])
+app.include_router(auth.router, tags=["auth"])
+app.include_router(users.router, tags=["users"])
 
 # ============================================================================
 # APPLICATION STARTUP
