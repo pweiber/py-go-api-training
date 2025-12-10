@@ -66,5 +66,15 @@ class BookResponse(BookBase):
     id: int
     created_by: Optional[int] = Field(None, description="ID of user who created the book")
 
+    @field_validator('isbn')
+    @classmethod
+    def normalize_isbn_lenient(cls, v: str) -> str:
+        #Attempt to normalize ISBN without raising errors for legacy data
+        try:
+            return validate_isbn(v)
+        except ValueError:
+            # Return as-is if validation fails (legacy data)
+            return v
+
     class Config:
         from_attributes = True  # Allows conversion from SQLAlchemy models
