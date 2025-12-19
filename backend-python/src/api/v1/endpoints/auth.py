@@ -208,13 +208,22 @@ async def update_user_profile(
             "created_at": "2023-09-12T10:30:00.123456"
         }
     """
-    # Check if sensitive fields are being updated (email or password)
-    if (user_update.email and user_update.email != current_user.email) or user_update.password:
+    # Check if email is being changed - require current password
+    if user_update.email and user_update.email != current_user.email:
         if not user_update.current_password or not verify_password(user_update.current_password,
                                                                    current_user.hashed_password):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Incorrect or missing current password for profile update."
+                detail="Current password required to change email"
+            )
+
+    # Check if password is being changed - always require current password
+    if user_update.password:
+        if not user_update.current_password or not verify_password(user_update.current_password,
+                                                                   current_user.hashed_password):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Current password required to change password"
             )
 
     # Check if email is being updated and if it already exists
