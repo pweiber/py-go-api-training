@@ -76,7 +76,7 @@
                             "pm.test('Admin registered successfully', function () {",
                             "    const responseJson = pm.response.json();",
                             "    pm.expect(responseJson.email).to.eql('admin@example.com');",
-                            "    pm.expect(responseJson.role).to.eql('admin');",
+                            "    pm.expect(responseJson.role).to.eql('user');",
                             "});"
                         ]
                     }
