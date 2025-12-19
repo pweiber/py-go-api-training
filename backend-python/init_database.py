@@ -87,7 +87,7 @@ def seed_initial_admin():
 
         print(f"✅ Initial admin user created successfully!")
         print(f"   Email: {admin_email}")
-        print(f"   Password: {admin_password}")
+        print(f"   Password: [set from INITIAL_ADMIN_PASSWORD or default]")
         print(f"   ⚠️  Remember to change the password after first login!")
 
         return True
