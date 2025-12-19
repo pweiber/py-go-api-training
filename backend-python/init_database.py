@@ -10,7 +10,7 @@ from pathlib import Path
 # Add the project root to the path
 sys.path.insert(0, str(Path(__file__).parent))
 
-from src.core.database import engine, init_db, Base, SessionLocal
+from src.core.database import engine, init_db, SessionLocal
 from src.models import User
 from src.models.user import UserRole
 from src.core.auth import hash_password
@@ -21,8 +21,13 @@ def check_database_connection():
     try:
         with engine.connect() as conn:
             result = conn.execute(text("SELECT 1"))
-            print("✅ Database connection successful!")
-            return True
+            value = result.scalar()
+            if value == 1:
+                print("✅ Database connection successful!")
+                return True
+            else:
+                print(f"❌ Unexpected result from database: {value}")
+                return False
     except Exception as e:
         print(f"❌ Database connection failed: {e}")
         return False
@@ -56,7 +61,7 @@ def seed_initial_admin():
 
     Reads admin credentials from environment variables:
     - INITIAL_ADMIN_EMAIL (default: admin@example.com)
-    - INITIAL_ADMIN_PASSWORD (default: admin123456)
+    - INITIAL_ADMIN_PASSWORD (default: Admin123456!)
     """
     db = SessionLocal()
     try:
@@ -69,7 +74,7 @@ def seed_initial_admin():
 
         # Get admin credentials from environment
         admin_email = os.getenv("INITIAL_ADMIN_EMAIL", "admin@example.com")
-        admin_password = os.getenv("INITIAL_ADMIN_PASSWORD", "admin123456")
+        admin_password = os.getenv("INITIAL_ADMIN_PASSWORD", "Admin123456!")
 
         print(f"Creating initial admin user: {admin_email}")
 
