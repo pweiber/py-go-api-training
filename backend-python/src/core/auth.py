@@ -236,7 +236,13 @@ def authenticate_user(db: Session, email: str, password: str) -> Optional[User]:
     """
     user = db.query(User).filter(User.email == email).first()
 
+    # Perform dummy password verification even when user is not found
+    # to prevent timing attacks that could enumerate valid usernames
     if not user:
+        # Use a dummy hash to ensure consistent timing
+        # This is a bcrypt hash of an empty string
+        dummy_hash = "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW"
+        verify_password(password, dummy_hash)
         return None
 
     if not verify_password(password, user.hashed_password):
