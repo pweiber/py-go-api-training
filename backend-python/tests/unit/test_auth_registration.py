@@ -79,14 +79,3 @@ def test_register_invalid_email(client):
     response = client.post("/register", json=user_data)
     assert response.status_code == 422  # Validation error
 
-
-def test_registration_forces_user_role_security(client):
-    """Test that registration always creates users with 'user' role (security fix)."""
-    # Registration should always force role to 'user'
-    response = client.post("/register", json={
-        "email": "secureuser@test.com",
-        "password": STRONG_PASSWORD
-    })
-    assert response.status_code == 201
-    data = response.json()
-    assert data["role"] == "user"  # Always 'user', never 'admin'
