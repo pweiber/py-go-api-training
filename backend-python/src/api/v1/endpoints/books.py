@@ -165,6 +165,12 @@ async def update_book(
     
     Requires authentication. Only the Owner or an Admin can update a book.
     
+    Authorization Rules:
+        - Admin users can update any book
+        - Regular users can only update books they created
+        - Legacy books (created_by=None) can only be updated by admins
+          (maintained for backward compatibility with pre-auth books)
+
     Args:
         book_id: The ID of the book to update
         book: Book data to update
@@ -190,6 +196,8 @@ async def update_book(
         )
     
     # Authorization check: Admin OR Owner
+    # Note: Legacy books with created_by=None can only be updated by admins
+    # since (None != current_user.id) will always be True for non-admin users
     if current_user.role != UserRole.ADMIN and db_book.created_by != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

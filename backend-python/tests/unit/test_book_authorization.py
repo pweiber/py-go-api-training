@@ -3,6 +3,8 @@ Unit tests for Book Authorization endpoints.
 """
 
 from fastapi.testclient import TestClient
+from src.models.book import Book
+from datetime import date
 
 # Standard strong password for tests
 STRONG_PASSWORD = "TestPassword123!"
@@ -16,9 +18,9 @@ def test_create_book_authenticated(client):
         "password": STRONG_PASSWORD,
         "role": "user"
     }
-    client.post("/register", json=register_data)
-    
-    login_response = client.post("/login", json={
+    client.post("/api/v1/auth/register", json=register_data)
+
+    login_response = client.post("/api/v1/auth/login", json={
         "email": "bookauthor@example.com",
         "password": STRONG_PASSWORD
     })
@@ -66,13 +68,13 @@ def test_delete_book_as_admin(client):
         "password": STRONG_PASSWORD,
         "role": "user"
     }
-    client.post("/register", json=user_data)
+    client.post("/api/v1/auth/register", json=user_data)
     
     # Create admin
     create_admin_user(client, "adminuser@example.com", STRONG_PASSWORD)
     
     # Login as user and create book
-    user_login = client.post("/login", json={
+    user_login = client.post("/api/v1/auth/login", json={
         "email": "regularuser@example.com",
         "password": STRONG_PASSWORD
     })
@@ -92,7 +94,7 @@ def test_delete_book_as_admin(client):
     book_id = create_response.json()["id"]
     
     # Login as admin and delete book
-    admin_login = client.post("/login", json={
+    admin_login = client.post("/api/v1/auth/login", json={
         "email": "adminuser@example.com",
         "password": STRONG_PASSWORD
     })
@@ -114,10 +116,10 @@ def test_delete_book_as_non_admin(client):
         "password": STRONG_PASSWORD,
         "role": "user"
     }
-    client.post("/register", json=user_data)
+    client.post("/api/v1/auth/register", json=user_data)
     
     # Login and create book
-    login_response = client.post("/login", json={
+    login_response = client.post("/api/v1/auth/login", json={
         "email": "nonadmin@example.com",
         "password": STRONG_PASSWORD
     })
@@ -156,11 +158,11 @@ def test_update_book_authorization(client):
         "email": "user2@example.com",
         "password": STRONG_PASSWORD
     }
-    client.post("/register", json=user1_data)
-    client.post("/register", json=user2_data)
+    client.post("/api/v1/auth/register", json=user1_data)
+    client.post("/api/v1/auth/register", json=user2_data)
     
     # Login as user1 and create book
-    login1 = client.post("/login", json={"email": "user1@example.com", "password": STRONG_PASSWORD})
+    login1 = client.post("/api/v1/auth/login", json={"email": "user1@example.com", "password": STRONG_PASSWORD})
     token1 = login1.json()["access_token"]
     
     book_data = {
@@ -173,7 +175,7 @@ def test_update_book_authorization(client):
     book_id = create_response.json()["id"]
     
     # Login as user2 and try to update user1's book
-    login2 = client.post("/login", json={"email": "user2@example.com", "password": STRONG_PASSWORD})
+    login2 = client.post("/api/v1/auth/login", json={"email": "user2@example.com", "password": STRONG_PASSWORD})
     token2 = login2.json()["access_token"]
     
     update_response = client.put(
@@ -194,9 +196,9 @@ def test_admin_can_update_any_book(client):
         "email": "user@example.com",
         "password": STRONG_PASSWORD
     }
-    client.post("/register", json=user_data)
+    client.post("/api/v1/auth/register", json=user_data)
     
-    login = client.post("/login", json={"email": "user@example.com", "password": STRONG_PASSWORD})
+    login = client.post("/api/v1/auth/login", json={"email": "user@example.com", "password": STRONG_PASSWORD})
     user_token = login.json()["access_token"]
     
     book_data = {
@@ -210,7 +212,7 @@ def test_admin_can_update_any_book(client):
     
     # Create admin and update the book
     create_admin_user(client, "admin@example.com", STRONG_PASSWORD)
-    admin_login = client.post("/login", json={"email": "admin@example.com", "password": STRONG_PASSWORD})
+    admin_login = client.post("/api/v1/auth/login", json={"email": "admin@example.com", "password": STRONG_PASSWORD})
     admin_token = admin_login.json()["access_token"]
     
     update_response = client.put(
@@ -229,9 +231,9 @@ def test_owner_can_update_own_book(client):
         "email": "owner@example.com",
         "password": STRONG_PASSWORD
     }
-    client.post("/register", json=user_data)
+    client.post("/api/v1/auth/register", json=user_data)
     
-    login = client.post("/login", json={"email": "owner@example.com", "password": STRONG_PASSWORD})
+    login = client.post("/api/v1/auth/login", json={"email": "owner@example.com", "password": STRONG_PASSWORD})
     token = login.json()["access_token"]
     
     book_data = {
@@ -251,3 +253,139 @@ def test_owner_can_update_own_book(client):
     )
     assert update_response.status_code == 200
     assert update_response.json()["title"] == "Updated My Book"
+
+
+def test_legacy_book_update_by_regular_user_forbidden(client):
+    """
+    Test that regular users cannot update legacy books (created_by=None).
+
+    Legacy books are those created before authentication was implemented.
+    For backward compatibility, the created_by field is nullable, but only
+    admins can update these legacy books.
+    """
+    from tests.conftest import TestingSessionLocal
+
+    # Create a legacy book directly in database with created_by=None
+    db = TestingSessionLocal()
+    try:
+        legacy_book = Book(
+            title="Legacy Book",
+            author="Old Author",
+            isbn="9780000000001",
+            published_date=date(2020, 1, 1),
+            description="A book from before authentication",
+            created_by=None  # Legacy book with no creator
+        )
+        db.add(legacy_book)
+        db.commit()
+        db.refresh(legacy_book)
+        book_id = legacy_book.id
+    finally:
+        db.close()
+
+    # Register and login as regular user
+    user_data = {
+        "email": "regularuser@example.com",
+        "password": STRONG_PASSWORD
+    }
+    client.post("/api/v1/auth/register", json=user_data)
+
+    login = client.post("/api/v1/auth/login", json={
+        "email": "regularuser@example.com",
+        "password": STRONG_PASSWORD
+    })
+    user_token = login.json()["access_token"]
+
+    # Try to update the legacy book as regular user
+    update_response = client.put(
+        f"/api/v1/books/{book_id}",
+        json={"title": "Attempted Update"},
+        headers={"Authorization": f"Bearer {user_token}"}
+    )
+
+    # Should be forbidden - only admins can update legacy books
+    assert update_response.status_code == 403
+    assert "your own books" in update_response.json()["detail"].lower()
+
+
+def test_legacy_book_update_by_admin_allowed(client):
+    """
+    Test that admin users can update legacy books (created_by=None).
+
+    This verifies that the backward compatibility mechanism works correctly
+    and admins retain control over legacy books from before authentication.
+    """
+    from tests.conftest import TestingSessionLocal, create_admin_user
+
+    # Create a legacy book directly in database with created_by=None
+    db = TestingSessionLocal()
+    try:
+        legacy_book = Book(
+            title="Legacy Book",
+            author="Old Author",
+            isbn="9780000000002",
+            published_date=date(2020, 1, 1),
+            description="A book from before authentication",
+            created_by=None  # Legacy book with no creator
+        )
+        db.add(legacy_book)
+        db.commit()
+        db.refresh(legacy_book)
+        book_id = legacy_book.id
+    finally:
+        db.close()
+
+    # Create admin user and login
+    create_admin_user(client, "admin@example.com", STRONG_PASSWORD)
+    admin_login = client.post("/api/v1/auth/login", json={
+        "email": "admin@example.com",
+        "password": STRONG_PASSWORD
+    })
+    admin_token = admin_login.json()["access_token"]
+
+    # Admin should be able to update the legacy book
+    update_response = client.put(
+        f"/api/v1/books/{book_id}",
+        json={"title": "Admin Updated Legacy Book"},
+        headers={"Authorization": f"Bearer {admin_token}"}
+    )
+
+    # Should succeed
+    assert update_response.status_code == 200
+    assert update_response.json()["title"] == "Admin Updated Legacy Book"
+    assert update_response.json()["created_by"] is None  # Still None after update
+
+
+def test_legacy_book_visible_in_list(client):
+    """
+    Test that legacy books (created_by=None) are still visible in book listings.
+
+    This ensures backward compatibility - existing books remain accessible.
+    """
+    from tests.conftest import TestingSessionLocal
+
+    # Create a legacy book directly in database with created_by=None
+    db = TestingSessionLocal()
+    try:
+        legacy_book = Book(
+            title="Legacy Visible Book",
+            author="Old Author",
+            isbn="9780000000003",
+            published_date=date(2020, 1, 1),
+            description="Should be visible",
+            created_by=None
+        )
+        db.add(legacy_book)
+        db.commit()
+    finally:
+        db.close()
+
+    # Get all books (no auth required for GET)
+    response = client.get("/api/v1/books")
+
+    assert response.status_code == 200
+    books = response.json()
+    assert len(books) == 1
+    assert books[0]["title"] == "Legacy Visible Book"
+    assert books[0]["created_by"] is None
+
