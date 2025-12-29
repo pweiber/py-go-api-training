@@ -15,7 +15,7 @@ def test_register_user(client):
         "password": STRONG_PASSWORD,
         "role": "user"
     }
-    response = client.post("/register", json=user_data)
+    response = client.post("/api/v1/auth/register", json=user_data)
     assert response.status_code == 201
     data = response.json()
     assert data["email"] == user_data["email"]
@@ -33,7 +33,7 @@ def test_register_forces_user_role(client):
         "password": STRONG_PASSWORD,
         "role": "admin"
     }
-    response = client.post("/register", json=admin_data)
+    response = client.post("/api/v1/auth/register", json=admin_data)
     assert response.status_code == 201
     data = response.json()
     assert data["email"] == admin_data["email"]
@@ -49,11 +49,11 @@ def test_register_duplicate_email(client):
         "role": "user"
     }
     # Register first time
-    response = client.post("/register", json=user_data)
+    response = client.post("/api/v1/auth/register", json=user_data)
     assert response.status_code == 201
     
     # Try to register again with same email
-    response = client.post("/register", json=user_data)
+    response = client.post("/api/v1/auth/register", json=user_data)
     assert response.status_code == 400
     assert "already exists" in response.json()["detail"]
 
@@ -65,7 +65,7 @@ def test_register_weak_password(client):
         "password": "short",  # Too short, no digits
         "role": "user"
     }
-    response = client.post("/register", json=user_data)
+    response = client.post("/api/v1/auth/register", json=user_data)
     assert response.status_code == 422  # Validation error
 
 
@@ -76,6 +76,6 @@ def test_register_invalid_email(client):
         "password": STRONG_PASSWORD,
         "role": "user"
     }
-    response = client.post("/register", json=user_data)
+    response = client.post("/api/v1/auth/register", json=user_data)
     assert response.status_code == 422  # Validation error
 
