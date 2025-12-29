@@ -16,16 +16,16 @@ def test_get_current_user_profile(client):
         "password": STRONG_PASSWORD,
         "role": "user"
     }
-    client.post("/register", json=register_data)
+    client.post("/api/v1/auth/register", json=register_data)
     
-    login_response = client.post("/login", json={
+    login_response = client.post("/api/v1/auth/login", json={
         "email": "profile@example.com",
         "password": STRONG_PASSWORD
     })
     token = login_response.json()["access_token"]
     
     # Get profile
-    response = client.get("/me", headers={"Authorization": f"Bearer {token}"})
+    response = client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {token}"})
     assert response.status_code == 200
     data = response.json()
     assert data["email"] == "profile@example.com"
@@ -35,13 +35,13 @@ def test_get_current_user_profile(client):
 
 def test_get_current_user_no_token(client):
     """Test getting profile without token returns 403."""
-    response = client.get("/me")
+    response = client.get("/api/v1/auth/me")
     assert response.status_code == 403
 
 
 def test_get_current_user_invalid_token(client):
     """Test getting profile with invalid token returns 401."""
-    response = client.get("/me", headers={"Authorization": "Bearer invalid-token"})
+    response = client.get("/api/v1/auth/me", headers={"Authorization": "Bearer invalid-token"})
     assert response.status_code == 401
 
 
@@ -53,9 +53,9 @@ def test_update_user_profile_email_change_requires_password(client):
         "password": STRONG_PASSWORD,
         "role": "user"
     }
-    client.post("/register", json=register_data)
+    client.post("/api/v1/auth/register", json=register_data)
     
-    login_response = client.post("/login", json={
+    login_response = client.post("/api/v1/auth/login", json={
         "email": "updateme@example.com",
         "password": STRONG_PASSWORD
     })
@@ -66,7 +66,7 @@ def test_update_user_profile_email_change_requires_password(client):
         "email": "newemail@example.com"
     }
     response = client.put(
-        "/me",
+        "/api/v1/auth/me",
         json=update_data,
         headers={"Authorization": f"Bearer {token}"}
     )
@@ -82,9 +82,9 @@ def test_update_user_profile_email_with_password(client):
         "password": STRONG_PASSWORD,
         "role": "user"
     }
-    client.post("/register", json=register_data)
+    client.post("/api/v1/auth/register", json=register_data)
     
-    login_response = client.post("/login", json={
+    login_response = client.post("/api/v1/auth/login", json={
         "email": "updatewithpass@example.com",
         "password": STRONG_PASSWORD
     })
@@ -96,7 +96,7 @@ def test_update_user_profile_email_with_password(client):
         "current_password": STRONG_PASSWORD
     }
     response = client.put(
-        "/me",
+        "/api/v1/auth/me",
         json=update_data,
         headers={"Authorization": f"Bearer {token}"}
     )
@@ -113,9 +113,9 @@ def test_update_user_profile_email_with_wrong_password(client):
         "password": STRONG_PASSWORD,
         "role": "user"
     }
-    client.post("/register", json=register_data)
+    client.post("/api/v1/auth/register", json=register_data)
     
-    login_response = client.post("/login", json={
+    login_response = client.post("/api/v1/auth/login", json={
         "email": "updatewrongpass@example.com",
         "password": STRONG_PASSWORD
     })
@@ -127,7 +127,7 @@ def test_update_user_profile_email_with_wrong_password(client):
         "current_password": "WrongPassword123!"
     }
     response = client.put(
-        "/me",
+        "/api/v1/auth/me",
         json=update_data,
         headers={"Authorization": f"Bearer {token}"}
     )
@@ -143,9 +143,9 @@ def test_update_password_requires_current_password(client):
         "password": STRONG_PASSWORD,
         "role": "user"
     }
-    client.post("/register", json=register_data)
+    client.post("/api/v1/auth/register", json=register_data)
     
-    login_response = client.post("/login", json={
+    login_response = client.post("/api/v1/auth/login", json={
         "email": "passcheck@example.com",
         "password": STRONG_PASSWORD
     })
@@ -153,7 +153,7 @@ def test_update_password_requires_current_password(client):
     
     # Try to update password without current_password
     response = client.put(
-        "/me",
+        "/api/v1/auth/me",
         json={"password": "NewStrongPassword123!"},
         headers={"Authorization": f"Bearer {token}"}
     )
@@ -169,9 +169,9 @@ def test_update_password_with_wrong_current_password(client):
         "password": STRONG_PASSWORD,
         "role": "user"
     }
-    client.post("/register", json=register_data)
+    client.post("/api/v1/auth/register", json=register_data)
     
-    login_response = client.post("/login", json={
+    login_response = client.post("/api/v1/auth/login", json={
         "email": "wrongpasscheck@example.com",
         "password": STRONG_PASSWORD
     })
@@ -179,7 +179,7 @@ def test_update_password_with_wrong_current_password(client):
     
     # Try to update password with wrong current_password
     response = client.put(
-        "/me",
+        "/api/v1/auth/me",
         json={
             "password": "NewStrongPassword123!",
             "current_password": "WrongPassword123!"
@@ -198,9 +198,9 @@ def test_update_password_success(client):
         "password": STRONG_PASSWORD,
         "role": "user"
     }
-    client.post("/register", json=register_data)
+    client.post("/api/v1/auth/register", json=register_data)
     
-    login_response = client.post("/login", json={
+    login_response = client.post("/api/v1/auth/login", json={
         "email": "goodpasscheck@example.com",
         "password": STRONG_PASSWORD
     })
@@ -209,7 +209,7 @@ def test_update_password_success(client):
     # Update password successfully
     new_password = "NewStrongPassword123!"
     response = client.put(
-        "/me",
+        "/api/v1/auth/me",
         json={
             "password": new_password,
             "current_password": STRONG_PASSWORD
@@ -219,7 +219,7 @@ def test_update_password_success(client):
     assert response.status_code == 200
     
     # Verify new password works
-    login_response = client.post("/login", json={
+    login_response = client.post("/api/v1/auth/login", json={
         "email": "goodpasscheck@example.com",
         "password": new_password
     })
