@@ -16,7 +16,7 @@ def test_promote_user_to_admin(client):
     admin_headers = get_auth_headers(client, "admin@test.com", STRONG_PASSWORD, "admin")
 
     # Register a regular user
-    response = client.post("/register", json={
+    response = client.post("/api/v1/auth/register", json={
         "email": "user@test.com",
         "password": STRONG_PASSWORD
     })
@@ -26,7 +26,7 @@ def test_promote_user_to_admin(client):
 
     # Promote user to admin
     response = client.patch(
-        f"/users/{user_id}/role",
+        f"/api/v1/users/{user_id}/role",
         json={"role": "admin"},
         headers=admin_headers
     )
@@ -47,7 +47,7 @@ def test_demote_admin_to_user(client):
 
     # Demote admin2 to user
     response = client.patch(
-        f"/users/{admin2_data['id']}/role",
+        f"/api/v1/users/{admin2_data['id']}/role",
         json={"role": "user"},
         headers=admin1_headers
     )
@@ -65,7 +65,7 @@ def test_cannot_demote_last_admin(client):
     admin_data = create_admin_user(client, "admin@test.com", STRONG_PASSWORD)
     
     # Login as admin
-    login_response = client.post("/login", json={
+    login_response = client.post("/api/v1/auth/login", json={
         "email": "admin@test.com",
         "password": STRONG_PASSWORD
     })
@@ -74,7 +74,7 @@ def test_cannot_demote_last_admin(client):
 
     # Try to demote the only admin
     response = client.patch(
-        f"/users/{admin_data['id']}/role",
+        f"/api/v1/users/{admin_data['id']}/role",
         json={"role": "user"},
         headers=admin_headers
     )
@@ -90,7 +90,7 @@ def test_non_admin_cannot_promote_users(client):
     user_headers = get_auth_headers(client, "user@test.com", STRONG_PASSWORD, "user")
 
     # Register another user to promote
-    response = client.post("/register", json={
+    response = client.post("/api/v1/auth/register", json={
         "email": "user2@test.com",
         "password": STRONG_PASSWORD
     })
@@ -98,7 +98,7 @@ def test_non_admin_cannot_promote_users(client):
 
     # Try to promote as regular user (should fail)
     response = client.patch(
-        f"/users/{user2_id}/role",
+        f"/api/v1/users/{user2_id}/role",
         json={"role": "admin"},
         headers=user_headers
     )
@@ -113,7 +113,7 @@ def test_promote_nonexistent_user(client):
     admin_headers = get_auth_headers(client, "admin@test.com", STRONG_PASSWORD, "admin")
 
     response = client.patch(
-        "/users/99999/role",
+        "/api/v1/users/99999/role",
         json={"role": "admin"},
         headers=admin_headers
     )
@@ -124,7 +124,7 @@ def test_promote_nonexistent_user(client):
 def test_promote_without_authentication(client):
     """Test that unauthenticated requests are rejected."""
     # Register a user
-    response = client.post("/register", json={
+    response = client.post("/api/v1/auth/register", json={
         "email": "user@test.com",
         "password": STRONG_PASSWORD
     })
@@ -132,7 +132,7 @@ def test_promote_without_authentication(client):
 
     # Try to promote without auth
     response = client.patch(
-        f"/users/{user_id}/role",
+        f"/api/v1/users/{user_id}/role",
         json={"role": "admin"}
     )
     assert response.status_code == 403
@@ -146,11 +146,11 @@ def test_list_all_users_as_admin(client):
     admin_headers = get_auth_headers(client, "admin@test.com", STRONG_PASSWORD, "admin")
 
     # Create some regular users
-    client.post("/register", json={"email": "user1@test.com", "password": STRONG_PASSWORD})
-    client.post("/register", json={"email": "user2@test.com", "password": STRONG_PASSWORD})
+    client.post("/api/v1/auth/register", json={"email": "user1@test.com", "password": STRONG_PASSWORD})
+    client.post("/api/v1/auth/register", json={"email": "user2@test.com", "password": STRONG_PASSWORD})
 
     # List all users
-    response = client.get("/users", headers=admin_headers)
+    response = client.get("/api/v1/users", headers=admin_headers)
     assert response.status_code == 200
     users = response.json()
     assert len(users) >= 3  # admin + 2 regular users
@@ -164,7 +164,7 @@ def test_list_users_as_regular_user_fails(client):
 
     user_headers = get_auth_headers(client, "user@test.com", STRONG_PASSWORD, "user")
 
-    response = client.get("/users", headers=user_headers)
+    response = client.get("/api/v1/users", headers=user_headers)
     assert response.status_code == 403
 
 
@@ -175,14 +175,14 @@ def test_get_user_by_id_as_admin(client):
     admin_headers = get_auth_headers(client, "admin@test.com", STRONG_PASSWORD, "admin")
 
     # Create a user
-    response = client.post("/register", json={
+    response = client.post("/api/v1/auth/register", json={
         "email": "user@test.com",
         "password": STRONG_PASSWORD
     })
     user_id = response.json()["id"]
 
     # Get user by ID
-    response = client.get(f"/users/{user_id}", headers=admin_headers)
+    response = client.get(f"/api/v1/users/{user_id}", headers=admin_headers)
     assert response.status_code == 200
     data = response.json()
     assert data["id"] == user_id
@@ -196,5 +196,5 @@ def test_get_nonexistent_user_returns_404(client):
 
     admin_headers = get_auth_headers(client, "admin@test.com", STRONG_PASSWORD, "admin")
 
-    response = client.get("/users/99999", headers=admin_headers)
+    response = client.get("/api/v1/users/99999", headers=admin_headers)
     assert response.status_code == 404
