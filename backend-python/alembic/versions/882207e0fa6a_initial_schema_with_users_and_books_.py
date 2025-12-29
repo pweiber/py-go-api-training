@@ -40,7 +40,7 @@ def upgrade() -> None:
     sa.Column('published_date', sa.Date(), nullable=False),
     sa.Column('description', sa.Text(), nullable=True),
     sa.Column('created_by', sa.Integer(), nullable=True),
-    sa.ForeignKeyConstraint(['created_by'], ['users.id'], ),
+    sa.ForeignKeyConstraint(('created_by',), ('users.id',), ondelete='SET NULL'),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_books_id'), 'books', ['id'], unique=False)

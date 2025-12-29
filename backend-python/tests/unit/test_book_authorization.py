@@ -55,7 +55,7 @@ def test_create_book_unauthenticated(client):
         "published_date": "2023-06-15"
     }
     response = client.post("/api/v1/books", json=book_data)
-    assert response.status_code == 403
+    assert response.status_code == 401
 
 
 def test_delete_book_as_admin(client):
