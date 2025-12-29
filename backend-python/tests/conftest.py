@@ -95,7 +95,7 @@ def create_admin_user(client: TestClient, email: str, password: str) -> dict:
         dict: User data with id, email, role
     """
     # Register the user
-    response = client.post("/register", json={
+    response = client.post("/api/v1/auth/register", json={
         "email": email,
         "password": password
     })
@@ -143,14 +143,14 @@ def get_auth_headers(client: TestClient, email: str, password: str, role: str = 
         create_admin_user(client, email, password)
     else:
         # Register regular user
-        response = client.post("/register", json={
+        response = client.post("/api/v1/auth/register", json={
             "email": email,
             "password": password
         })
         assert response.status_code == 201
 
     # Login to get token
-    login_response = client.post("/login", json={
+    login_response = client.post("/api/v1/auth/login", json={
         "email": email,
         "password": password
     })
