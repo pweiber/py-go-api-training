@@ -34,9 +34,9 @@ def test_get_current_user_profile(client):
 
 
 def test_get_current_user_no_token(client):
-    """Test getting profile without token returns 403."""
+    """Test getting profile without token returns 401."""
     response = client.get("/api/v1/auth/me")
-    assert response.status_code == 403
+    assert response.status_code == 401
 
 
 def test_get_current_user_invalid_token(client):
