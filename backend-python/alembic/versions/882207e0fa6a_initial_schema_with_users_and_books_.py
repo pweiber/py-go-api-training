@@ -26,8 +26,8 @@ def upgrade() -> None:
     sa.Column('email', sa.String(length=255), nullable=False),
     sa.Column('hashed_password', sa.String(length=255), nullable=False),
     sa.Column('is_active', sa.Boolean(), nullable=False),
-    sa.Column('role', sa.Enum('USER', 'ADMIN', name='userrole'), nullable=False),
-    sa.Column('created_at', sa.DateTime(), nullable=False),
+    sa.Column('role', sa.Enum('USER', 'ADMIN', name='user role'), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_users_email'), 'users', ['email'], unique=True)
@@ -61,5 +61,5 @@ def downgrade() -> None:
     op.drop_table('users')
     # ### end Alembic commands ###
 
-    # Drop the ENUM type to prevent orphaned types in PostgreSQL
-    op.execute("DROP TYPE IF EXISTS userrole")
+    # Drop the ENUM type to prevent orphaned types in PostgresSQL
+    op.execute("DROP TYPE IF EXISTS user role")
