@@ -92,6 +92,20 @@ backend-python/
    uvicorn src.main:app --reload
    ```
 
+### Database Migrations
+
+This project uses [Alembic](https://alembic.sqlalchemy.org/) for database migrations.
+
+1. **Initialize/Upgrade database:**
+   ```bash
+   alembic upgrade head
+   ```
+
+2. **Create a new migration:**
+   ```bash
+   alembic revision --autogenerate -m "Description of changes"
+   ```
+
 ## 🌐 API Endpoints
 
 ### API Versioning
@@ -103,6 +117,17 @@ This API uses URL-based versioning with the `/api/v1` prefix for all endpoints. 
 - Follows REST API industry best practices
 
 ### Available Endpoints
+
+#### Authentication API (v1)
+
+All auth endpoints are prefixed with `/api/v1/auth`:
+
+- **POST** `/api/v1/auth/register` - Register a new user
+- **POST** `/api/v1/auth/login` - Login and get JWT token
+- **GET** `/api/v1/auth/me` - Get current user profile
+- **PUT** `/api/v1/auth/me` - Update user profile
+
+**Note:** Passwords must meet strict security requirements (see Task 2 section for details).
 
 #### Books API (v1)
 
@@ -231,6 +256,14 @@ mypy src
 - Implement authentication in `src/core/security.py`
 - Create auth endpoints in `src/api/v1/endpoints/auth.py`
 - Add authentication dependencies
+
+#### Password Policy
+For security, passwords must meet the following requirements:
+- Minimum 8 characters long
+- At least one lowercase letter (a-z)
+- At least one uppercase letter (A-Z)
+- At least one digit (0-9)
+- At least one special character (!@#$%^&*(),.?":{}|<>)
 
 ### Task 3: CRUD Operations with Relationships
 - Extend models with relationships

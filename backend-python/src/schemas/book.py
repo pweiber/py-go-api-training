@@ -13,15 +13,18 @@ class BookBase(BaseModel):
     published_date: date = Field(..., description="Publication date")
     description: Optional[str] = Field(None, description="Book description")
 
-    @field_validator('isbn')
-    @classmethod
-    def normalize_isbn(cls, v: str) -> str:
-        """Normalize ISBN using shared validator."""
-        return validate_isbn(v)
+    # NOTE: Intentionally no validator here so responses don't re-validate
+    # existing DB data (avoids 500 if legacy rows contain invalid ISBN).
 
 
 class BookCreate(BookBase):
     """Schema for creating a new book."""
+
+    # Validate/normalize only on input (creation)
+    @field_validator('isbn')
+    @classmethod
+    def normalize_isbn_on_create(cls, v: str) -> str:
+        return validate_isbn(v)
 
     class Config:
         json_schema_extra = {
@@ -43,10 +46,10 @@ class BookUpdate(BaseModel):
     published_date: Optional[date] = None
     description: Optional[str] = None
 
+    # Validate/normalize only on input (update)
     @field_validator('isbn')
     @classmethod
-    def normalize_isbn(cls, v: Optional[str]) -> Optional[str]:
-        """Normalize ISBN using shared validator."""
+    def normalize_isbn_on_update(cls, v: Optional[str]) -> Optional[str]:
         return validate_isbn(v)
 
     class Config:
@@ -59,8 +62,19 @@ class BookUpdate(BaseModel):
 
 
 class BookResponse(BookBase):
-    """Schema for book responses, includes the ID."""
+    """Schema for book responses, includes the ID and creator."""
     id: int
+    created_by: Optional[int] = Field(None, description="ID of user who created the book")
+
+    @field_validator('isbn')
+    @classmethod
+    def normalize_isbn_lenient(cls, v: str) -> str:
+        #Attempt to normalize ISBN without raising errors for legacy data
+        try:
+            return validate_isbn(v)
+        except ValueError:
+            # Return as-is if validation fails (legacy data)
+            return v
 
     class Config:
         from_attributes = True  # Allows conversion from SQLAlchemy models
