@@ -47,7 +47,7 @@ def test_create_book_authenticated(client):
 
 
 def test_create_book_unauthenticated(client):
-    """Test creating a book without authentication returns 403."""
+    """Test creating a book without authentication returns 401."""
     book_data = {
         "title": "Unauthorized Book",
         "author": "No Auth",
