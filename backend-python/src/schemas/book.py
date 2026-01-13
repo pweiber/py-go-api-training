@@ -1,7 +1,7 @@
 """Pydantic schemas for Book API request/response validation."""
 from pydantic import BaseModel, Field, field_validator
 from datetime import date
-from typing import Optional
+from typing import Optional, List, Generic, TypeVar
 from src.schemas.validators import validate_isbn
 
 
@@ -19,6 +19,7 @@ class BookBase(BaseModel):
 
 class BookCreate(BookBase):
     """Schema for creating a new book."""
+    author_id: Optional[int] = Field(None, description="ID of the author (optional)")
 
     # Validate/normalize only on input (creation)
     @field_validator('isbn')
@@ -33,7 +34,8 @@ class BookCreate(BookBase):
                 "author": "John Doe",
                 "isbn": "9780123456789",  # Can also accept "978-0-12-345678-9" format
                 "published_date": "2023-01-15",
-                "description": "A comprehensive guide to Python programming"
+                "description": "A comprehensive guide to Python programming",
+                "author_id": 1
             }
         }
 
@@ -42,6 +44,7 @@ class BookUpdate(BaseModel):
     """Schema for updating a book. All fields are optional."""
     title: Optional[str] = Field(None, min_length=1, max_length=255)
     author: Optional[str] = Field(None, min_length=1, max_length=255)
+    author_id: Optional[int] = Field(None, description="ID of the author")
     isbn: Optional[str] = Field(None, min_length=10, max_length=17)
     published_date: Optional[date] = None
     description: Optional[str] = None
@@ -61,9 +64,28 @@ class BookUpdate(BaseModel):
         }
 
 
+class CategoryInBookResponse(BaseModel):
+    """Simplified category schema for book responses."""
+    id: int
+    name: str
+
+    class Config:
+        from_attributes = True
+
+
+class AuthorInBookResponse(BaseModel):
+    """Simplified author schema for book responses."""
+    id: int
+    name: str
+
+    class Config:
+        from_attributes = True
+
+
 class BookResponse(BookBase):
     """Schema for book responses, includes the ID and creator."""
     id: int
+    author_id: Optional[int] = Field(None, description="ID of the author")
     created_by: Optional[int] = Field(None, description="ID of user who created the book")
 
     @field_validator('isbn')
@@ -78,3 +100,29 @@ class BookResponse(BookBase):
 
     class Config:
         from_attributes = True  # Allows conversion from SQLAlchemy models
+
+
+class BookWithDetailsResponse(BookResponse):
+    """Schema for book response including categories and average rating."""
+    categories: List[CategoryInBookResponse] = []
+    author_rel: Optional[AuthorInBookResponse] = None
+    average_rating: Optional[float] = None
+
+    class Config:
+        from_attributes = True
+
+
+T = TypeVar('T')
+
+
+class PaginatedResponse(BaseModel, Generic[T]):
+    """Generic paginated response schema."""
+    items: List[T]
+    total: int = Field(..., description="Total number of items")
+    page: int = Field(..., description="Current page number")
+    size: int = Field(..., description="Number of items per page")
+    pages: int = Field(..., description="Total number of pages")
+
+    class Config:
+        from_attributes = True
+
