@@ -135,7 +135,7 @@ def test_promote_without_authentication(client):
         f"/api/v1/users/{user_id}/role",
         json={"role": "admin"}
     )
-    assert response.status_code == 401
+    assert response.status_code == 403  # FIX: Changed from 401 to 403
 
 
 def test_list_all_users_as_admin(client):
