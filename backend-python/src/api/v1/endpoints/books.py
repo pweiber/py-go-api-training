@@ -4,17 +4,21 @@ Books API endpoints - CRUD operations for books resource.
 This module implements RESTful CRUD operations for the Book resource with
 comprehensive error handling for database operations.
 """
-from fastapi import APIRouter, HTTPException, Depends, status
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, HTTPException, Depends, status, Query
+from sqlalchemy.orm import Session, joinedload, selectinload
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
-from typing import List
+from sqlalchemy import func, or_
+from typing import List, Optional
 import logging
+import math
 
 from src.core.database import get_db
 from src.core.auth import get_current_user, get_admin_user
 from src.models.book import Book
+from src.models.category import Category
+from src.models.review import Review
 from src.models.user import User, UserRole
-from src.schemas.book import BookCreate, BookUpdate, BookResponse
+from src.schemas.book import BookCreate, BookUpdate, BookResponse, BookWithDetailsResponse, PaginatedResponse
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -22,23 +26,114 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-@router.get("/books", response_model=List[BookResponse], status_code=status.HTTP_200_OK)
-async def get_books(db: Session = Depends(get_db)):
+@router.get("/books", response_model=PaginatedResponse[BookWithDetailsResponse], status_code=status.HTTP_200_OK)
+async def get_books(
+    db: Session = Depends(get_db),
+    search: Optional[str] = Query(None, description="Search in title and description"),
+    author_id: Optional[int] = Query(None, description="Filter by author ID"),
+    category: Optional[str] = Query(None, description="Filter by category name"),
+    min_rating: Optional[float] = Query(None, ge=1, le=5, description="Minimum average rating"),
+    page: int = Query(1, ge=1, description="Page number"),
+    size: int = Query(10, ge=1, le=100, description="Items per page")
+):
     """
-    Get all books from the database.
-    
+    Get all books from the database with filtering and pagination.
+
     Args:
         db: Database session dependency
-        
+        search: Optional search term for title/description
+        author_id: Optional filter by author ID
+        category: Optional filter by category name
+        min_rating: Optional minimum average rating filter
+        page: Page number (default 1)
+        size: Items per page (default 10, max 100)
+
     Returns:
-        List of all books
+        Paginated list of books with details
 
     Raises:
         HTTPException: 500 if database error occurs
     """
     try:
-        books = db.query(Book).all()
-        return books
+        # Base query with eager loading to avoid N+1
+        query = db.query(Book).options(
+            selectinload(Book.categories),
+            selectinload(Book.author_rel),
+            selectinload(Book.reviews)
+        )
+
+        # Apply search filter
+        if search:
+            search_term = f"%{search}%"
+            query = query.filter(
+                or_(
+                    Book.title.ilike(search_term),
+                    Book.description.ilike(search_term)
+                )
+            )
+
+        # Apply author filter
+        if author_id:
+            query = query.filter(Book.author_id == author_id)
+
+        # Apply category filter
+        if category:
+            query = query.join(Book.categories).filter(Category.name.ilike(category))
+
+        # Apply min_rating filter using subquery
+        if min_rating is not None:
+            # Subquery to get average rating per book
+            rating_subquery = db.query(
+                Review.book_id,
+                func.avg(Review.rating).label('avg_rating')
+            ).group_by(Review.book_id).subquery()
+
+            query = query.join(
+                rating_subquery,
+                Book.id == rating_subquery.c.book_id
+            ).filter(rating_subquery.c.avg_rating >= min_rating)
+
+        # Get total count before pagination
+        total = query.count()
+
+        # Calculate pagination
+        pages = math.ceil(total / size) if total > 0 else 1
+        offset = (page - 1) * size
+
+        # Apply pagination
+        books = query.offset(offset).limit(size).all()
+
+        # Calculate average rating for each book
+        items = []
+        for book in books:
+            book_dict = {
+                "id": book.id,
+                "title": book.title,
+                "author": book.author,
+                "author_id": book.author_id,
+                "isbn": book.isbn,
+                "published_date": book.published_date,
+                "description": book.description,
+                "created_by": book.created_by,
+                "categories": book.categories,
+                "author_rel": book.author_rel,
+                "average_rating": None
+            }
+
+            if book.reviews:
+                avg = sum(r.rating for r in book.reviews) / len(book.reviews)
+                book_dict["average_rating"] = round(avg, 2)
+
+            items.append(BookWithDetailsResponse.model_validate(book_dict))
+
+        return PaginatedResponse[BookWithDetailsResponse](
+            items=items,
+            total=total,
+            page=page,
+            size=size,
+            pages=pages
+        )
+
     except SQLAlchemyError as e:
         logger.error(f"Database error fetching books: {str(e)}")
         raise HTTPException(
@@ -47,7 +142,7 @@ async def get_books(db: Session = Depends(get_db)):
         )
 
 
-@router.get("/books/{book_id}", response_model=BookResponse, status_code=status.HTTP_200_OK)
+@router.get("/books/{book_id}", response_model=BookWithDetailsResponse, status_code=status.HTTP_200_OK)
 async def get_book(book_id: int, db: Session = Depends(get_db)):
     """
     Get a specific book by ID.
@@ -57,14 +152,18 @@ async def get_book(book_id: int, db: Session = Depends(get_db)):
         db: Database session dependency
         
     Returns:
-        Book details
-        
+        Book details with categories and average rating
+
     Raises:
         HTTPException: 404 if book not found
         HTTPException: 500 if database error occurs
     """
     try:
-        book = db.query(Book).filter(Book.id == book_id).first()
+        book = db.query(Book).options(
+            selectinload(Book.categories),
+            selectinload(Book.author_rel),
+            selectinload(Book.reviews)
+        ).filter(Book.id == book_id).first()
 
         if book is None:
             raise HTTPException(
@@ -72,7 +171,24 @@ async def get_book(book_id: int, db: Session = Depends(get_db)):
                 detail=f"Book with id {book_id} not found"
             )
 
-        return book
+        # Calculate average rating
+        average_rating = None
+        if book.reviews:
+            average_rating = round(sum(r.rating for r in book.reviews) / len(book.reviews), 2)
+
+        return BookWithDetailsResponse(
+            id=book.id,
+            title=book.title,
+            author=book.author,
+            author_id=book.author_id,
+            isbn=book.isbn,
+            published_date=book.published_date,
+            description=book.description,
+            created_by=book.created_by,
+            categories=book.categories,
+            author_rel=book.author_rel,
+            average_rating=average_rating
+        )
     except HTTPException:
         # Re-raise HTTP exceptions (like 404)
         raise
@@ -111,6 +227,7 @@ async def create_book(
     db_book = Book(
         title=book.title,
         author=book.author,
+        author_id=book.author_id,
         isbn=book.isbn,
         published_date=book.published_date,
         description=book.description,
