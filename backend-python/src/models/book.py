@@ -13,25 +13,39 @@ class Book(Base):
     Attributes:
         id: Primary key, auto-incrementing integer
         title: Book title (max 255 characters)
-        author: Book author (max 255 characters)
+        author: Book author string (max 255 characters) - kept for backward compatibility
+        author_id: Foreign key to Author model
         isbn: ISBN number (13 characters, unique)
         published_date: Date when the book was published
         description: Optional text description of the book
         created_by: Foreign key to user who created the book
         creator: Relationship to User model
+        author_rel: Relationship to Author model
+        categories: Many-to-many relationship to Category model
+        reviews: One-to-many relationship to Review model
     """
     __tablename__ = "books"
     
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     title = Column(String(255), nullable=False, index=True)
-    author = Column(String(255), nullable=False)
+    author = Column(String(255), nullable=False)  # Kept for backward compatibility
+    author_id = Column(Integer, ForeignKey("authors.id", ondelete="SET NULL"), nullable=True, index=True)
     isbn = Column(String(17), unique=True, nullable=False, index=True)
     published_date = Column(Date, nullable=False)
     description = Column(Text, nullable=True)
     created_by = Column(Integer, ForeignKey("users.id"), nullable=True)  # Nullable for backward compatibility
 
-    # Relationship to user
+    # Relationship to user (creator)
     creator = relationship("User", back_populates="books")
+
+    # Relationship to author
+    author_rel = relationship("Author", back_populates="books")
+
+    # Many-to-many relationship to categories
+    categories = relationship("Category", secondary="book_categories", back_populates="books")
+
+    # One-to-many relationship to reviews
+    reviews = relationship("Review", back_populates="book", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<Book(id={self.id}, title='{self.title}', isbn='{self.isbn}')>"
