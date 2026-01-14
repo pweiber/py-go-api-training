@@ -274,7 +274,7 @@ async def update_book_categories(
         )
 
     # Authorization check: Admin OR Owner
-    if current_user.role != UserRole.ADMIN and db_book.created_by != current_user.id:
+    if current_user.role != UserRole.ADMIN and db_book.created_by is not None and db_book.created_by != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You can only update categories for your own books"

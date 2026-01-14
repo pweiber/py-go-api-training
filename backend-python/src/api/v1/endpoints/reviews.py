@@ -48,7 +48,7 @@ async def create_review(
         )
 
     # Check if user is trying to review their own book
-    if book.created_by == current_user.id:
+    if book.created_by is not None and book.created_by == current_user.id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="You cannot review your own book"
