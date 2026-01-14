@@ -11,7 +11,7 @@ from src.core.database import get_db
 from src.core.auth import get_current_user
 from src.models.review import Review
 from src.models.book import Book
-from src.models.user import User
+from src.models.user import User, UserRole
 from src.schemas.review import ReviewCreate, ReviewResponse, ReviewWithDetailsResponse
 
 # Configure logger
@@ -205,7 +205,7 @@ async def delete_review(
         )
 
     # Check if user owns the review
-    if db_review.user_id != current_user.id:
+    if db_review.user_id != current_user.id and current_user.role != UserRole.ADMIN:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You can only delete your own reviews"
