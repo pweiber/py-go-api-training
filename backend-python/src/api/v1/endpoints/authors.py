@@ -23,7 +23,7 @@ router = APIRouter()
 async def create_author(
     author: AuthorCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_admin_user)
 ):
     """
     Create a new author.
@@ -120,7 +120,7 @@ async def update_author(
     author_id: int,
     author: AuthorUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_admin_user)
 ):
     """
     Update an existing author.
