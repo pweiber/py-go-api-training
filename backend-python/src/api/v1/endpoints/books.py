@@ -55,11 +55,19 @@ async def get_books(
         HTTPException: 500 if database error occurs
     """
     try:
-        # Base query with eager loading to avoid N+1
-        query = db.query(Book).options(
+        # Subquery to calculate average rating per book (use for all books, not just when filtering)
+        rating_subquery = db.query(
+            Review.book_id,
+            func.avg(Review.rating).label('avg_rating')
+        ).group_by(Review.book_id).subquery()
+
+        # Base query with eager loading to avoid N+1 and include average rating
+        query = db.query(Book, rating_subquery.c.avg_rating).outerjoin(
+            rating_subquery,
+            Book.id == rating_subquery.c.book_id
+        ).options(
             selectinload(Book.categories),
-            selectinload(Book.author_rel),
-            selectinload(Book.reviews)
+            selectinload(Book.author_rel)
         )
 
         # Apply search filter
@@ -80,18 +88,9 @@ async def get_books(
         if category:
             query = query.join(Book.categories).filter(Category.name.ilike(category))
 
-        # Apply min_rating filter using subquery
+        # Apply min_rating filter
         if min_rating is not None:
-            # Subquery to get average rating per book
-            rating_subquery = db.query(
-                Review.book_id,
-                func.avg(Review.rating).label('avg_rating')
-            ).group_by(Review.book_id).subquery()
-
-            query = query.join(
-                rating_subquery,
-                Book.id == rating_subquery.c.book_id
-            ).filter(rating_subquery.c.avg_rating >= min_rating)
+            query = query.filter(rating_subquery.c.avg_rating >= min_rating)
 
         # Get total count before pagination
         total = query.count()
@@ -101,11 +100,11 @@ async def get_books(
         offset = (page - 1) * size
 
         # Apply pagination
-        books = query.offset(offset).limit(size).all()
+        results = query.offset(offset).limit(size).all()
 
-        # Calculate average rating for each book
+        # Build response with database-calculated average rating
         items = []
-        for book in books:
+        for book, avg_rating in results:
             book_dict = {
                 "id": book.id,
                 "title": book.title,
@@ -117,12 +116,8 @@ async def get_books(
                 "created_by": book.created_by,
                 "categories": book.categories,
                 "author_rel": book.author_rel,
-                "average_rating": None
+                "average_rating": round(avg_rating, 2) if avg_rating is not None else None
             }
-
-            if book.reviews:
-                avg = sum(r.rating for r in book.reviews) / len(book.reviews)
-                book_dict["average_rating"] = round(avg, 2)
 
             items.append(BookWithDetailsResponse.model_validate(book_dict))
 
@@ -159,22 +154,28 @@ async def get_book(book_id: int, db: Session = Depends(get_db)):
         HTTPException: 500 if database error occurs
     """
     try:
-        book = db.query(Book).options(
+        # Subquery to calculate average rating
+        rating_subquery = db.query(
+            Review.book_id,
+            func.avg(Review.rating).label('avg_rating')
+        ).group_by(Review.book_id).subquery()
+
+        # Query book with average rating from database
+        result = db.query(Book, rating_subquery.c.avg_rating).outerjoin(
+            rating_subquery,
+            Book.id == rating_subquery.c.book_id
+        ).options(
             selectinload(Book.categories),
-            selectinload(Book.author_rel),
-            selectinload(Book.reviews)
+            selectinload(Book.author_rel)
         ).filter(Book.id == book_id).first()
 
-        if book is None:
+        if result is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Book with id {book_id} not found"
             )
 
-        # Calculate average rating
-        average_rating = None
-        if book.reviews:
-            average_rating = round(sum(r.rating for r in book.reviews) / len(book.reviews), 2)
+        book, avg_rating = result
 
         return BookWithDetailsResponse(
             id=book.id,
@@ -187,7 +188,7 @@ async def get_book(book_id: int, db: Session = Depends(get_db)):
             created_by=book.created_by,
             categories=book.categories,
             author_rel=book.author_rel,
-            average_rating=average_rating
+            average_rating=round(avg_rating, 2) if avg_rating is not None else None
         )
     except HTTPException:
         # Re-raise HTTP exceptions (like 404)
