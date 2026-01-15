@@ -176,6 +176,67 @@ async def get_review(review_id: int, db: Session = Depends(get_db)):
             detail="An error occurred while retrieving the review"
         )
 
+@router.put("/reviews/{review_id}", response_model=ReviewResponse, status_code=status.HTTP_200_OK)
+async def update_review(
+    review_id: int,
+    review_update: ReviewCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Update an existing review.
+
+    A user can only update their own review. Rating and comment can be modified.
+
+    Args:
+        review_id: The ID of the review to update
+        review_update: Updated review data
+        db: Database session dependency
+        current_user: Authenticated user
+
+    Returns:
+        Updated review
+    """
+    db_review = db.query(Review).filter(Review.id == review_id).first()
+
+    if db_review is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Review with id {review_id} not found"
+        )
+
+    # Check if user owns the review
+    if db_review.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only update your own reviews"
+        )
+
+    # Prevent changing the book being reviewed
+    if review_update.book_id != db_review.book_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot change the book being reviewed"
+        )
+
+    try:
+        db_review.rating = review_update.rating
+        db_review.comment = review_update.comment
+
+        db.commit()
+        db.refresh(db_review)
+
+        logger.info(f"Successfully updated review ID {review_id} by user {current_user.id}")
+        return db_review
+
+    except SQLAlchemyError as e:
+        db.rollback()
+        logger.error(f"Database error updating review {review_id}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while updating the review"
+        )
+
 
 @router.delete("/reviews/{review_id}", status_code=status.HTTP_200_OK)
 async def delete_review(
@@ -225,4 +286,5 @@ async def delete_review(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An error occurred while deleting the review"
         )
+
 
