@@ -7,7 +7,7 @@ from tests.conftest import get_auth_headers, STRONG_PASSWORD
 
 def test_create_author(client):
     """Test creating an author with valid data."""
-    auth_headers = get_auth_headers(client, "author_creator@example.com", STRONG_PASSWORD)
+    auth_headers = get_auth_headers(client, "author_creator@example.com", STRONG_PASSWORD, role="admin")
 
     author_data = {
         "name": "J.K. Rowling",
@@ -29,7 +29,7 @@ def test_create_author(client):
 
 def test_create_author_validation(client):
     """Test creating an author with missing required fields."""
-    auth_headers = get_auth_headers(client, "author_val@example.com", STRONG_PASSWORD)
+    auth_headers = get_auth_headers(client, "author_val@example.com", STRONG_PASSWORD, role="admin")
 
     # Missing name (required field)
     author_data = {
@@ -42,7 +42,7 @@ def test_create_author_validation(client):
 
 def test_create_author_minimal(client):
     """Test creating an author with only required fields."""
-    auth_headers = get_auth_headers(client, "author_min@example.com", STRONG_PASSWORD)
+    auth_headers = get_auth_headers(client, "author_min@example.com", STRONG_PASSWORD, role="admin")
 
     author_data = {
         "name": "Minimal Author"
@@ -59,7 +59,7 @@ def test_create_author_minimal(client):
 
 def test_get_authors(client):
     """Test getting all authors."""
-    auth_headers = get_auth_headers(client, "author_list@example.com", STRONG_PASSWORD)
+    auth_headers = get_auth_headers(client, "author_list@example.com", STRONG_PASSWORD, role="admin")
 
     # Create an author first
     client.post("/api/v1/authors", json={"name": "Test Author"}, headers=auth_headers)
@@ -74,7 +74,7 @@ def test_get_authors(client):
 
 def test_get_author_by_id(client):
     """Test getting a specific author by ID."""
-    auth_headers = get_auth_headers(client, "author_get@example.com", STRONG_PASSWORD)
+    auth_headers = get_auth_headers(client, "author_get@example.com", STRONG_PASSWORD, role="admin")
 
     # Create an author
     create_response = client.post("/api/v1/authors", json={"name": "Specific Author"}, headers=auth_headers)
@@ -97,7 +97,7 @@ def test_get_author_not_found(client):
 
 def test_get_author_with_books(client):
     """Test that author response includes their books."""
-    auth_headers = get_auth_headers(client, "author_books@example.com", STRONG_PASSWORD)
+    auth_headers = get_auth_headers(client, "author_books@example.com", STRONG_PASSWORD, role="admin")
 
     # Create an author
     author_response = client.post("/api/v1/authors", json={"name": "Author With Books"}, headers=auth_headers)
@@ -125,7 +125,7 @@ def test_get_author_with_books(client):
 
 def test_update_author(client):
     """Test updating an author."""
-    auth_headers = get_auth_headers(client, "author_update@example.com", STRONG_PASSWORD)
+    auth_headers = get_auth_headers(client, "author_update@example.com", STRONG_PASSWORD, role="admin")
 
     # Create an author
     create_response = client.post("/api/v1/authors", json={"name": "Original Name"}, headers=auth_headers)
@@ -198,4 +198,37 @@ def test_delete_author_requires_admin(client):
     # Try to delete as regular user
     response = client.delete(f"/api/v1/authors/{author_id}", headers=user_headers)
     assert response.status_code == 403
+
+
+def test_create_author_requires_admin(client):
+    """Test that only admins can create authors."""
+    user_headers = get_auth_headers(client, "regular_user_create@example.com", STRONG_PASSWORD)
+
+    author_data = {
+        "name": "Unauthorized Author",
+        "bio": "This should not be created"
+    }
+
+    response = client.post("/api/v1/authors", json=author_data, headers=user_headers)
+    assert response.status_code == 403
+
+
+def test_update_author_requires_admin(client):
+    """Test that only admins can update authors."""
+    admin_headers = get_auth_headers(client, "admin_update@example.com", STRONG_PASSWORD, role="admin")
+    user_headers = get_auth_headers(client, "regular_user_update@example.com", STRONG_PASSWORD)
+
+    # Create an author as admin
+    create_response = client.post("/api/v1/authors", json={"name": "Test Author"}, headers=admin_headers)
+    author_id = create_response.json()["id"]
+
+    # Try to update as regular user
+    update_data = {
+        "name": "Hacked Name",
+        "bio": "Unauthorized update"
+    }
+    response = client.put(f"/api/v1/authors/{author_id}", json=update_data, headers=user_headers)
+    assert response.status_code == 403
+
+
 
