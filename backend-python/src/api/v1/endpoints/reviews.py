@@ -12,7 +12,7 @@ from src.core.auth import get_current_user
 from src.models.review import Review
 from src.models.book import Book
 from src.models.user import User, UserRole
-from src.schemas.review import ReviewCreate, ReviewResponse, ReviewWithDetailsResponse
+from src.schemas.review import ReviewCreate, ReviewUpdate, ReviewResponse, ReviewWithDetailsResponse
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -189,7 +189,7 @@ async def get_review(review_id: int, db: Session = Depends(get_db)):
 @router.put("/reviews/{review_id}", response_model=ReviewResponse, status_code=status.HTTP_200_OK)
 async def update_review(
     review_id: int,
-    review_update: ReviewCreate,
+    review_update: ReviewUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -222,16 +222,12 @@ async def update_review(
             detail="You can only update your own reviews"
         )
 
-    # Prevent changing the book being reviewed
-    if review_update.book_id != db_review.book_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot change the book being reviewed"
-        )
-
     try:
-        db_review.rating = review_update.rating
-        db_review.comment = review_update.comment
+        # Update only the fields that are provided
+        if review_update.rating is not None:
+            db_review.rating = review_update.rating
+        if review_update.comment is not None:
+            db_review.comment = review_update.comment
 
         db.commit()
         db.refresh(db_review)
