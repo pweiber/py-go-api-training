@@ -134,6 +134,18 @@ async def get_book_reviews(
             detail=f"Book with id {book_id} not found"
         )
 
+    # Validate pagination parameters to prevent bypassing the cap
+    if skip < 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="skip must be non-negative"
+        )
+    if limit < 1:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="limit must be positive"
+        )
+
     # Cap the limit to prevent excessive data retrieval
     limit = min(limit, 100)
 
