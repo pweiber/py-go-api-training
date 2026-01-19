@@ -236,7 +236,7 @@ async def create_book(
         created_by=current_user.id
     )
     
-    # Auto-sync author string from Author model if author_id is provided
+    # Validate and auto-sync author string from Author model if author_id is provided
     # This ensures backward compatibility and data consistency
     if book.author_id is not None:
         author_obj = db.query(Author).filter(Author.id == book.author_id).first()
@@ -244,7 +244,10 @@ async def create_book(
             db_book.author = author_obj.name
             logger.info(f"Auto-synced author string '{author_obj.name}' from author_id {book.author_id}")
         else:
-            logger.warning(f"author_id {book.author_id} provided but Author not found")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Author with id {book.author_id} not found"
+            )
 
     # Add to database with exception handling
     try:
@@ -338,7 +341,7 @@ async def update_book(
     for field, value in update_data.items():
         setattr(db_book, field, value)
     
-    # Auto-sync author string from Author model if author_id was updated
+    # Validate and auto-sync author string from Author model if author_id was updated
     # This ensures backward compatibility and data consistency
     if 'author_id' in update_data and update_data['author_id'] is not None:
         author_obj = db.query(Author).filter(Author.id == update_data['author_id']).first()
@@ -346,7 +349,10 @@ async def update_book(
             db_book.author = author_obj.name
             logger.info(f"Auto-synced author string '{author_obj.name}' from author_id {update_data['author_id']}")
         else:
-            logger.warning(f"author_id {update_data['author_id']} provided but Author not found")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Author with id {update_data['author_id']} not found"
+            )
 
     # Commit with exception handling
     try:
