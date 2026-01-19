@@ -257,7 +257,7 @@ async def delete_review(
     """
     Delete a review.
 
-    A user can only delete their own review.
+    A user can only delete their own review. Admins can delete any review.
 
     Args:
         review_id: The ID of the review to delete
