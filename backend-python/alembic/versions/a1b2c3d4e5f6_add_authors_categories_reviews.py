@@ -76,7 +76,7 @@ def upgrade() -> None:
 
     # Add author_id foreign key to books table
     op.add_column('books', sa.Column('author_id', sa.Integer(), nullable=True))
-    op.create_foreign_key('fk_books_author_id', 'books', 'authors', ['author_id'], ['id'], ondelete='SET NULL')
+    op.create_foreign_key('fk_books_author_id', 'books', 'authors', ['author_id'], ['id'], ondelete='RESTRICT')
     op.create_index(op.f('ix_books_author_id'), 'books', ['author_id'], unique=False)
 
 
