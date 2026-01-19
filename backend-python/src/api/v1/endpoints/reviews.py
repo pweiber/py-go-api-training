@@ -108,16 +108,23 @@ async def create_review(
 
 
 @router.get("/books/{book_id}/reviews", response_model=List[ReviewWithDetailsResponse], status_code=status.HTTP_200_OK)
-async def get_book_reviews(book_id: int, db: Session = Depends(get_db)):
+async def get_book_reviews(
+    book_id: int,
+    skip: int = 0,
+    limit: int = 10,
+    db: Session = Depends(get_db)
+):
     """
-    Get all reviews for a specific book.
+    Get all reviews for a specific book with pagination.
 
     Args:
         book_id: The ID of the book
+        skip: Number of records to skip (default: 0)
+        limit: Maximum number of records to return (default: 10, max: 100)
         db: Database session dependency
 
     Returns:
-        List of reviews for the book
+        List of reviews for the book (paginated)
     """
     # Check if book exists
     book = db.query(Book).filter(Book.id == book_id).first()
@@ -127,11 +134,14 @@ async def get_book_reviews(book_id: int, db: Session = Depends(get_db)):
             detail=f"Book with id {book_id} not found"
         )
 
+    # Cap the limit to prevent excessive data retrieval
+    limit = min(limit, 100)
+
     try:
         reviews = db.query(Review).options(
             joinedload(Review.user),
             joinedload(Review.book)
-        ).filter(Review.book_id == book_id).all()
+        ).filter(Review.book_id == book_id).offset(skip).limit(limit).all()
 
         return reviews
     except SQLAlchemyError as e:
