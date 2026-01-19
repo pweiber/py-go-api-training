@@ -183,7 +183,7 @@ async def update_category(
         if "unique" in error_message.lower() or "duplicate" in error_message.lower():
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Category with name '{category.name}' already exists"
+                detail=f"Category with name '{category.name or db_category.name}' already exists"
             )
 
         raise HTTPException(
