@@ -21,7 +21,7 @@ from src.core.exceptions import (
     database_exception_handler,
     DatabaseException,
 )
-from src.api.v1.endpoints import books, auth, users
+from src.api.v1.endpoints import books, auth, users, authors, categories, reviews, stats
 
 
 app = FastAPI(
@@ -111,6 +111,10 @@ async def root():
 app.include_router(books.router, prefix="/api/v1", tags=["books"])
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
 app.include_router(users.router, prefix="/api/v1", tags=["users"])
+app.include_router(authors.router, prefix="/api/v1", tags=["authors"])
+app.include_router(categories.router, prefix="/api/v1", tags=["categories"])
+app.include_router(reviews.router, prefix="/api/v1", tags=["reviews"])
+app.include_router(stats.router, prefix="/api/v1", tags=["stats"])
 
 # ============================================================================
 # APPLICATION STARTUP

@@ -56,6 +56,6 @@ def init_db():
     Initialize database by creating all tables.
     """
     # Import all models here to ensure they are registered with SQLAlchemy
-    from src.models import Book, User
+    from src.models import Book, User, Author, Category, Review
 
     Base.metadata.create_all(bind=engine)

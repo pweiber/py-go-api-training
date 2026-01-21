@@ -55,8 +55,11 @@ def test_get_all_books(client):
     response = client.get("/api/v1/books")
     assert response.status_code == 200
     data = response.json()
-    assert isinstance(data, list)
-    assert len(data) > 0
+    # FIX: Check for paginated response structure
+    assert isinstance(data, dict)
+    assert "items" in data
+    assert isinstance(data["items"], list)
+    assert len(data["items"]) > 0
 
 
 def test_get_book_by_id(client):
@@ -72,7 +75,7 @@ def test_get_book_by_id(client):
     }
     create_response = client.post("/api/v1/books", json=book_data, headers=auth_headers)
     book_id = create_response.json()["id"]
-    
+
     response = client.get(f"/api/v1/books/{book_id}")
     assert response.status_code == 200
     data = response.json()
@@ -100,7 +103,7 @@ def test_update_book(client):
     }
     create_response = client.post("/api/v1/books", json=book_data, headers=auth_headers)
     book_id = create_response.json()["id"]
-    
+
     # Update the book
     update_data = {
         "title": "Updated Title",
@@ -135,13 +138,13 @@ def test_delete_book(client):
     }
     create_response = client.post("/api/v1/books", json=book_data, headers=user_headers)
     book_id = create_response.json()["id"]
-    
+
     # Delete the book (requires admin)
     admin_headers = get_auth_headers(client, "admin@example.com", STRONG_PASSWORD, role="admin")
     response = client.delete(f"/api/v1/books/{book_id}", headers=admin_headers)
     assert response.status_code == 200
     assert response.json() == {"message": "Book deleted successfully"}
-    
+
     # Verify book is deleted
     get_response = client.get(f"/api/v1/books/{book_id}")
     assert get_response.status_code == 404
@@ -152,4 +155,3 @@ def test_delete_book_not_found(client):
     admin_headers = get_auth_headers(client, "admin@example.com", STRONG_PASSWORD, role="admin")
     response = client.delete("/api/v1/books/99999", headers=admin_headers)
     assert response.status_code == 404
-
