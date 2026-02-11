@@ -48,7 +48,6 @@ class BookInCategoryResponse(BaseModel):
     """Simplified book schema for category responses."""
     id: int
     title: str
-    author: str
     isbn: str
 
     class Config:
