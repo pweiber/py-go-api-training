@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError, OperationalError
 from unittest.mock import patch, MagicMock, PropertyMock
 from datetime import date
-from tests.conftest import get_auth_headers, STRONG_PASSWORD
+from tests.conftest import get_auth_headers, create_test_author, STRONG_PASSWORD
 
 
 class TestIntegrityErrorHandling:
@@ -17,33 +17,43 @@ class TestIntegrityErrorHandling:
 
     def test_create_book_duplicate_isbn_precheck(self, client):
         """Test that duplicate ISBN is caught by database constraint."""
-        auth_headers = get_auth_headers(client, "author1@example.com", STRONG_PASSWORD)
+        admin_headers = get_auth_headers(client, "author1@example.com", STRONG_PASSWORD, is_admin=True)
+
+        # Create an author
+        author = create_test_author(client, "Test Author", admin_headers=admin_headers)
+
         book_data = {
             "title": "Test Book",
-            "author": "Test Author",
-            "isbn": "978-1111111111",
+            "isbn": "9781111111111",
             "published_date": "2023-01-15",
-            "description": "Test description"
+            "description": "Test description",
+            "author_ids": [author["id"]],
+            "category_ids": []
         }
 
         # Create first book
-        response1 = client.post("/api/v1/books", json=book_data, headers=auth_headers)
+        response1 = client.post("/api/v1/books", json=book_data, headers=admin_headers)
         assert response1.status_code == 201
 
         # Try to create duplicate - should fail at database constraint
-        response2 = client.post("/api/v1/books", json=book_data, headers=auth_headers)
+        response2 = client.post("/api/v1/books", json=book_data, headers=admin_headers)
         assert response2.status_code == 400
         assert "already exists" in response2.json()["detail"].lower()
 
     def test_create_book_integrity_error_race_condition(self, client):
         """Test IntegrityError during commit is handled (simulates race condition)."""
-        auth_headers = get_auth_headers(client, "author2@example.com", STRONG_PASSWORD)
+        admin_headers = get_auth_headers(client, "author2@example.com", STRONG_PASSWORD, is_admin=True)
+
+        # Create an author
+        author = create_test_author(client, "Test Author", admin_headers=admin_headers)
+
         book_data = {
             "title": "Race Condition Book",
-            "author": "Test Author",
-            "isbn": "978-9999999999",
+            "isbn": "9789999999999",
             "published_date": "2023-01-15",
-            "description": "Test"
+            "description": "Test",
+            "author_ids": [author["id"]],
+            "category_ids": []
         }
 
         # Mock the commit to raise IntegrityError
@@ -56,7 +66,7 @@ class TestIntegrityErrorHandling:
             integrity_error = IntegrityError("statement", "params", mock_orig)
             mock_commit.side_effect = integrity_error
 
-            response = client.post("/api/v1/books", json=book_data, headers=auth_headers)
+            response = client.post("/api/v1/books", json=book_data, headers=admin_headers)
 
             # Should return 400 Bad Request (consistent with constraint violations)
             assert response.status_code == 400
@@ -64,29 +74,35 @@ class TestIntegrityErrorHandling:
 
     def test_update_book_duplicate_isbn_integrity_error(self, client):
         """Test that duplicate ISBN during update is handled."""
-        auth_headers = get_auth_headers(client, "author3@example.com", STRONG_PASSWORD)
+        admin_headers = get_auth_headers(client, "author3@example.com", STRONG_PASSWORD, is_admin=True)
+
+        # Create an author
+        author = create_test_author(client, "Test Author", admin_headers=admin_headers)
+
         # Create two books
         book1_data = {
             "title": "Book 1",
-            "author": "Author 1",
-            "isbn": "978-1111111112",
+            "isbn": "9781111111112",
             "published_date": "2023-01-15",
+            "author_ids": [author["id"]],
+            "category_ids": []
         }
         book2_data = {
             "title": "Book 2",
-            "author": "Author 2",
-            "isbn": "978-2222222222",
+            "isbn": "9782222222222",
             "published_date": "2023-01-15",
+            "author_ids": [author["id"]],
+            "category_ids": []
         }
 
-        response1 = client.post("/api/v1/books", json=book1_data, headers=auth_headers)
-        response2 = client.post("/api/v1/books", json=book2_data, headers=auth_headers)
+        response1 = client.post("/api/v1/books", json=book1_data, headers=admin_headers)
+        response2 = client.post("/api/v1/books", json=book2_data, headers=admin_headers)
 
         book2_id = response2.json()["id"]
 
         # Try to update book2 with book1's ISBN
-        update_data = {"isbn": "978-1111111112"}
-        response = client.put(f"/api/v1/books/{book2_id}", json=update_data, headers=auth_headers)
+        update_data = {"isbn": "9781111111112"}
+        response = client.put(f"/api/v1/books/{book2_id}", json=update_data, headers=admin_headers)
 
         assert response.status_code == 400
         assert "exists" in response.json()["detail"].lower()
@@ -97,12 +113,17 @@ class TestDatabaseErrorHandling:
 
     def test_create_book_database_error(self, client):
         """Test that generic database errors return 500."""
-        auth_headers = get_auth_headers(client, "author4@example.com", STRONG_PASSWORD)
+        admin_headers = get_auth_headers(client, "author4@example.com", STRONG_PASSWORD, is_admin=True)
+
+        # Create an author
+        author = create_test_author(client, "Test Author", admin_headers=admin_headers)
+
         book_data = {
             "title": "Test Book",
-            "author": "Test Author",
-            "isbn": "978-8888888888",
+            "isbn": "9788888888888",
             "published_date": "2023-01-15",
+            "author_ids": [author["id"]],
+            "category_ids": []
         }
 
         # Mock commit to raise a generic SQLAlchemyError
@@ -110,7 +131,7 @@ class TestDatabaseErrorHandling:
             from sqlalchemy.exc import DatabaseError
             mock_commit.side_effect = DatabaseError("statement", "params", "database connection lost")
 
-            response = client.post("/api/v1/books", json=book_data, headers=auth_headers)
+            response = client.post("/api/v1/books", json=book_data, headers=admin_headers)
 
             # Should return 500 Internal Server Error
             assert response.status_code == 500
@@ -132,17 +153,20 @@ class TestDeleteConstraints:
 
     def test_delete_book_foreign_key_constraint(self, client):
         """Test that foreign key constraint violations are handled properly."""
-        auth_headers = get_auth_headers(client, "author5@example.com", STRONG_PASSWORD)
-        admin_headers = get_auth_headers(client, "admin@example.com", STRONG_PASSWORD, role="admin")
-        
+        admin_headers = get_auth_headers(client, "admin@example.com", STRONG_PASSWORD, is_admin=True)
+
+        # Create an author
+        author = create_test_author(client, "Test Author", admin_headers=admin_headers)
+
         # Create a book
         book_data = {
             "title": "Book with References",
-            "author": "Author",
-            "isbn": "978-5555555555",
+            "isbn": "9785555555555",
             "published_date": "2023-01-15",
+            "author_ids": [author["id"]],
+            "category_ids": []
         }
-        create_response = client.post("/api/v1/books", json=book_data, headers=auth_headers)
+        create_response = client.post("/api/v1/books", json=book_data, headers=admin_headers)
         book_id = create_response.json()["id"]
 
         # Mock the commit to simulate foreign key constraint error
@@ -161,7 +185,7 @@ class TestDeleteConstraints:
 
     def test_delete_nonexistent_book(self, client):
         """Test deleting a book that doesn't exist returns 404."""
-        admin_headers = get_auth_headers(client, "admin2@example.com", STRONG_PASSWORD, role="admin")
+        admin_headers = get_auth_headers(client, "admin2@example.com", STRONG_PASSWORD, is_admin=True)
         response = client.delete("/api/v1/books/99999", headers=admin_headers)
 
         assert response.status_code == 404
@@ -173,20 +197,25 @@ class TestConcurrentOperations:
 
     def test_concurrent_create_same_isbn(self, client):
         """Test that concurrent creates with same ISBN are handled."""
-        auth_headers = get_auth_headers(client, "author6@example.com", STRONG_PASSWORD)
+        admin_headers = get_auth_headers(client, "author6@example.com", STRONG_PASSWORD, is_admin=True)
+
+        # Create an author
+        author = create_test_author(client, "Test Author", admin_headers=admin_headers)
+
         book_data = {
             "title": "Concurrent Book",
-            "author": "Author",
-            "isbn": "978-4444444444",
+            "isbn": "9784444444444",
             "published_date": "2023-01-15",
+            "author_ids": [author["id"]],
+            "category_ids": []
         }
 
         # First request succeeds
-        response1 = client.post("/api/v1/books", json=book_data, headers=auth_headers)
+        response1 = client.post("/api/v1/books", json=book_data, headers=admin_headers)
         assert response1.status_code == 201
 
         # Second request should fail
-        response2 = client.post("/api/v1/books", json=book_data, headers=auth_headers)
+        response2 = client.post("/api/v1/books", json=book_data, headers=admin_headers)
         assert response2.status_code in [400, 409]
         assert "exists" in response2.json()["detail"].lower()
 
@@ -196,19 +225,24 @@ class TestErrorResponses:
 
     def test_error_response_structure(self, client):
         """Test that error responses include expected fields."""
-        auth_headers = get_auth_headers(client, "author7@example.com", STRONG_PASSWORD)
+        admin_headers = get_auth_headers(client, "author7@example.com", STRONG_PASSWORD, is_admin=True)
+
+        # Create an author
+        author = create_test_author(client, "Test Author", admin_headers=admin_headers)
+
         book_data = {
             "title": "Test Book",
-            "author": "Test Author",
-            "isbn": "978-6666666666",
+            "isbn": "9786666666666",
             "published_date": "2023-01-15",
+            "author_ids": [author["id"]],
+            "category_ids": []
         }
 
         # Create book
-        client.post("/api/v1/books", json=book_data, headers=auth_headers)
+        client.post("/api/v1/books", json=book_data, headers=admin_headers)
 
         # Try to create duplicate
-        response = client.post("/api/v1/books", json=book_data, headers=auth_headers)
+        response = client.post("/api/v1/books", json=book_data, headers=admin_headers)
 
         assert response.status_code in [400, 409]
         response_data = response.json()
@@ -234,21 +268,26 @@ class TestRollbackBehavior:
 
     def test_failed_create_rolls_back(self, client):
         """Test that a failed create operation doesn't leave partial data."""
-        auth_headers = get_auth_headers(client, "author8@example.com", STRONG_PASSWORD)
+        admin_headers = get_auth_headers(client, "author8@example.com", STRONG_PASSWORD, is_admin=True)
+
+        # Create an author
+        author = create_test_author(client, "Test Author", admin_headers=admin_headers)
+
         book_data = {
             "title": "Rollback Test Book",
-            "author": "Test Author",
-            "isbn": "978-7777777777",
+            "isbn": "9787777777777",
             "published_date": "2023-01-15",
+            "author_ids": [author["id"]],
+            "category_ids": []
         }
 
         # Create book successfully
-        response1 = client.post("/api/v1/books", json=book_data, headers=auth_headers)
+        response1 = client.post("/api/v1/books", json=book_data, headers=admin_headers)
         assert response1.status_code == 201
         book_id = response1.json()["id"]
 
         # Try to create duplicate (should fail and rollback)
-        response2 = client.post("/api/v1/books", json=book_data, headers=auth_headers)
+        response2 = client.post("/api/v1/books", json=book_data, headers=admin_headers)
         assert response2.status_code in [400, 409]
 
         # Verify only one book exists with this ID (the first one)
@@ -272,15 +311,20 @@ class TestGetOperationsErrorHandling:
 
     def test_get_book_database_error(self, client):
         """Test that database errors during single book retrieval are handled."""
-        auth_headers = get_auth_headers(client, "author9@example.com", STRONG_PASSWORD)
+        admin_headers = get_auth_headers(client, "author9@example.com", STRONG_PASSWORD, is_admin=True)
+
+        # Create an author
+        author = create_test_author(client, "Test Author", admin_headers=admin_headers)
+
         # Create a book first
         book_data = {
             "title": "Test Book for Error",
-            "author": "Test Author",
-            "isbn": "978-3333333333",
+            "isbn": "9783333333333",
             "published_date": "2023-01-15",
+            "author_ids": [author["id"]],
+            "category_ids": []
         }
-        create_response = client.post("/api/v1/books", json=book_data, headers=auth_headers)
+        create_response = client.post("/api/v1/books", json=book_data, headers=admin_headers)
         book_id = create_response.json()["id"]
 
         # Mock the query to raise an error
@@ -298,24 +342,29 @@ class TestUpdateOperationsErrorHandling:
 
     def test_update_book_not_found(self, client):
         """Test updating a non-existent book returns 404."""
-        auth_headers = get_auth_headers(client, "author10@example.com", STRONG_PASSWORD)
+        admin_headers = get_auth_headers(client, "author10@example.com", STRONG_PASSWORD, is_admin=True)
         update_data = {"title": "Updated Title"}
-        response = client.put("/api/v1/books/99999", json=update_data, headers=auth_headers)
+        response = client.put("/api/v1/books/99999", json=update_data, headers=admin_headers)
 
         assert response.status_code == 404
         assert "not found" in response.json()["detail"].lower()
 
     def test_update_book_database_error(self, client):
         """Test that database errors during update are handled."""
-        auth_headers = get_auth_headers(client, "author11@example.com", STRONG_PASSWORD)
+        admin_headers = get_auth_headers(client, "author11@example.com", STRONG_PASSWORD, is_admin=True)
+
+        # Create an author
+        author = create_test_author(client, "Test Author", admin_headers=admin_headers)
+
         # Create a book
         book_data = {
             "title": "Original Title",
-            "author": "Author",
-            "isbn": "978-1234567890",
+            "isbn": "9781234567890",
             "published_date": "2023-01-15",
+            "author_ids": [author["id"]],
+            "category_ids": []
         }
-        create_response = client.post("/api/v1/books", json=book_data, headers=auth_headers)
+        create_response = client.post("/api/v1/books", json=book_data, headers=admin_headers)
         book_id = create_response.json()["id"]
 
         # Mock commit to raise error
@@ -324,7 +373,7 @@ class TestUpdateOperationsErrorHandling:
             mock_commit.side_effect = DatabaseError("statement", "params", "connection error")
 
             update_data = {"title": "New Title"}
-            response = client.put(f"/api/v1/books/{book_id}", json=update_data, headers=auth_headers)
+            response = client.put(f"/api/v1/books/{book_id}", json=update_data, headers=admin_headers)
 
             assert response.status_code == 500
             assert "error occurred" in response.json()["detail"].lower()
