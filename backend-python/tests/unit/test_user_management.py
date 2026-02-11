@@ -13,7 +13,7 @@ def test_promote_user_to_admin(client):
     from tests.conftest import get_auth_headers
 
     # Create admin user
-    admin_headers = get_auth_headers(client, "admin@test.com", STRONG_PASSWORD, "admin")
+    admin_headers = get_auth_headers(client, "admin@test.com", STRONG_PASSWORD, is_admin=True)
 
     # Register a regular user
     response = client.post("/api/v1/auth/register", json={
@@ -42,7 +42,7 @@ def test_demote_admin_to_user(client):
     from tests.conftest import get_auth_headers, create_admin_user
 
     # Create two admin users
-    admin1_headers = get_auth_headers(client, "admin1@test.com", STRONG_PASSWORD, "admin")
+    admin1_headers = get_auth_headers(client, "admin1@test.com", STRONG_PASSWORD, is_admin=True)
     admin2_data = create_admin_user(client, "admin2@test.com", STRONG_PASSWORD)
 
     # Demote admin2 to user
@@ -87,7 +87,7 @@ def test_non_admin_cannot_promote_users(client):
     from tests.conftest import get_auth_headers
 
     # Create regular user
-    user_headers = get_auth_headers(client, "user@test.com", STRONG_PASSWORD, "user")
+    user_headers = get_auth_headers(client, "user@test.com", STRONG_PASSWORD, is_admin=False)
 
     # Register another user to promote
     response = client.post("/api/v1/auth/register", json={
@@ -110,7 +110,7 @@ def test_promote_nonexistent_user(client):
     """Test that promoting non-existent user returns 404."""
     from tests.conftest import get_auth_headers
 
-    admin_headers = get_auth_headers(client, "admin@test.com", STRONG_PASSWORD, "admin")
+    admin_headers = get_auth_headers(client, "admin@test.com", STRONG_PASSWORD, is_admin=True)
 
     response = client.patch(
         "/api/v1/users/99999/role",
@@ -135,15 +135,14 @@ def test_promote_without_authentication(client):
         f"/api/v1/users/{user_id}/role",
         json={"role": "admin"}
     )
-    assert response.status_code == 403  # FIX: Changed from 401 to 403
-
+    assert response.status_code == 401
 
 def test_list_all_users_as_admin(client):
     """Test that admin can list all users."""
     from tests.conftest import get_auth_headers
 
     # Create admin
-    admin_headers = get_auth_headers(client, "admin@test.com", STRONG_PASSWORD, "admin")
+    admin_headers = get_auth_headers(client, "admin@test.com", STRONG_PASSWORD, is_admin=True)
 
     # Create some regular users
     client.post("/api/v1/auth/register", json={"email": "user1@test.com", "password": STRONG_PASSWORD})
@@ -162,7 +161,7 @@ def test_list_users_as_regular_user_fails(client):
     """Test that regular users cannot list all users."""
     from tests.conftest import get_auth_headers
 
-    user_headers = get_auth_headers(client, "user@test.com", STRONG_PASSWORD, "user")
+    user_headers = get_auth_headers(client, "user@test.com", STRONG_PASSWORD, is_admin=False)
 
     response = client.get("/api/v1/users", headers=user_headers)
     assert response.status_code == 403
@@ -172,7 +171,7 @@ def test_get_user_by_id_as_admin(client):
     """Test that admin can get specific user by ID."""
     from tests.conftest import get_auth_headers
 
-    admin_headers = get_auth_headers(client, "admin@test.com", STRONG_PASSWORD, "admin")
+    admin_headers = get_auth_headers(client, "admin@test.com", STRONG_PASSWORD, is_admin=True)
 
     # Create a user
     response = client.post("/api/v1/auth/register", json={
@@ -194,7 +193,8 @@ def test_get_nonexistent_user_returns_404(client):
     """Test that getting non-existent user returns 404."""
     from tests.conftest import get_auth_headers
 
-    admin_headers = get_auth_headers(client, "admin@test.com", STRONG_PASSWORD, "admin")
+    admin_headers = get_auth_headers(client, "admin@test.com", STRONG_PASSWORD, is_admin=True)
 
     response = client.get("/api/v1/users/99999", headers=admin_headers)
     assert response.status_code == 404
+
