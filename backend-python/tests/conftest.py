@@ -15,6 +15,7 @@ from sqlalchemy.pool import StaticPool
 from src.main import app
 from src.core.database import Base, get_db
 from src.models.user import User
+from src.models.favorite import Favorite  # Import to ensure table creation
 from src.core.rate_limit import limiter
 
 # Disable rate limiting for tests
