@@ -12,7 +12,7 @@ from src.core.auth import get_current_user
 from src.models.favorite import Favorite
 from src.models.book import Book
 from src.models.user import User
-from src.schemas.book import BookResponse
+from src.schemas.favorite import FavoriteWithBookResponse
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -71,7 +71,7 @@ async def remove_favorite(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An error occurred")
 
 
-@router.get("/users/me/favorites", response_model=List[BookResponse], status_code=status.HTTP_200_OK)
+@router.get("/users/me/favorites", response_model=List[FavoriteWithBookResponse], status_code=status.HTTP_200_OK)
 async def get_my_favorites(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Get current user's favorite books."""
     try:
@@ -81,9 +81,8 @@ async def get_my_favorites(db: Session = Depends(get_db), current_user: User = D
             joinedload(Favorite.book).joinedload(Book.reviews)
         ).filter(Favorite.user_id == current_user.id).all()
 
-        books = [favorite.book for favorite in favorites]
-        logger.info(f"Retrieved {len(books)} favorites for user {current_user.id}")
-        return books
+        logger.info(f"Retrieved {len(favorites)} favorites for user {current_user.id}")
+        return favorites
     except SQLAlchemyError as e:
         logger.error(f"Error fetching favorites: {str(e)}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An error occurred")
