@@ -55,5 +55,8 @@ class Book(Base):
     # One-to-many relationship to reviews
     reviews = relationship("Review", back_populates="book", cascade="all, delete-orphan")
 
+    # One-to-many relationship to favorites
+    favorited_by = relationship("Favorite", back_populates="book", cascade="all, delete-orphan")
+
     def __repr__(self):
         return f"<Book(id={self.id}, title='{self.title}', isbn='{self.isbn}')>"
