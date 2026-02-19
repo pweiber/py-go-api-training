@@ -76,11 +76,8 @@ async def get_my_favorites(db: Session = Depends(get_db), current_user: User = D
     """Get current user's favorite books."""
     try:
         favorites = db.query(Favorite).options(
-            joinedload(Favorite.book).joinedload(Book.authors),
-            joinedload(Favorite.book).joinedload(Book.categories),
-            joinedload(Favorite.book).joinedload(Book.reviews)
+            joinedload(Favorite.book)
         ).filter(Favorite.user_id == current_user.id).all()
-
         logger.info(f"Retrieved {len(favorites)} favorites for user {current_user.id}")
         return favorites
     except SQLAlchemyError as e:
