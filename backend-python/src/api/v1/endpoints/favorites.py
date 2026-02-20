@@ -12,13 +12,13 @@ from src.core.auth import get_current_user
 from src.models.favorite import Favorite
 from src.models.book import Book
 from src.models.user import User
-from src.schemas.favorite import FavoriteWithBookResponse
+from src.schemas.favorite import FavoriteWithBookResponse, FavoriteCreateResponse
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-@router.post("/books/{book_id}/favorite", status_code=status.HTTP_201_CREATED)
+@router.post("/books/{book_id}/favorite", response_model=FavoriteCreateResponse, status_code=status.HTTP_201_CREATED)
 async def add_favorite(
     book_id: int,
     db: Session = Depends(get_db),

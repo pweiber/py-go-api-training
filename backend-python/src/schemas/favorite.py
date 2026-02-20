@@ -34,3 +34,11 @@ class FavoriteWithBookResponse(BaseModel):
     book: FavoriteBookResponse
 
     model_config = ConfigDict(from_attributes=True)
+
+class FavoriteCreateResponse(BaseModel):
+    """Schema for favorite creation response."""
+    message: str
+    id: int
+    book_id: int
+
+    model_config = ConfigDict(from_attributes=True)
