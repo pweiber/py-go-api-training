@@ -3,6 +3,7 @@ Book model for the bookstore application.
 """
 from sqlalchemy import Column, Integer, String, Date, Text, ForeignKey, Table, DateTime
 from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
 from datetime import datetime, timezone
 from src.core.database import Base
 
@@ -40,8 +41,8 @@ class Book(Base):
     published_date = Column(Date, nullable=False)
     description = Column(Text, nullable=True)
     created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), server_default=func.now(), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
 
     # Relationship to user (creator)
     creator = relationship("User", back_populates="books")
