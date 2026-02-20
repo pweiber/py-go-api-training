@@ -42,11 +42,11 @@ async def add_favorite(
         return {"message": "Book added to favorites", "id": favorite.id, "book_id": favorite.book_id}
     except IntegrityError:
         db.rollback()
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="You have already favorited this book")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="You have already favorited this book") from None
     except SQLAlchemyError as e:
         db.rollback()
-        logger.error(f"Error adding favorite: {str(e)}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An error occurred")
+        logger.exception("Error adding favorite")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An error occurred") from None
 
 
 @router.delete("/books/{book_id}/favorite", status_code=status.HTTP_200_OK)
@@ -67,8 +67,8 @@ async def remove_favorite(
         return {"message": "Book removed from favorites"}
     except SQLAlchemyError as e:
         db.rollback()
-        logger.error(f"Error removing favorite: {str(e)}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An error occurred")
+        logger.exception("Error removing favorite")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An error occurred") from None
 
 
 @router.get("/users/me/favorites", response_model=List[FavoriteWithBookResponse], status_code=status.HTTP_200_OK)
@@ -81,6 +81,5 @@ async def get_my_favorites(db: Session = Depends(get_db), current_user: User = D
         logger.info(f"Retrieved {len(favorites)} favorites for user {current_user.id}")
         return favorites
     except SQLAlchemyError as e:
-        logger.error(f"Error fetching favorites: {str(e)}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An error occurred")
-
+        logger.exception("Error fetching favorites")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An error occurred") from None
