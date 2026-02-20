@@ -12,8 +12,6 @@ class FavoriteResponse(BaseModel):
     book_id: int
     created_at: datetime
 
-    class Config:
-        from_attributes = True
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -25,8 +23,6 @@ class FavoriteBookResponse(BaseModel):
     published_date: str
     description: str | None = None
 
-    class Config:
-        from_attributes = True
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -37,7 +33,4 @@ class FavoriteWithBookResponse(BaseModel):
     created_at: datetime
     book: FavoriteBookResponse
 
-    class Config:
-        from_attributes = True
     model_config = ConfigDict(from_attributes=True)
-
