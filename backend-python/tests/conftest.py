@@ -177,8 +177,8 @@ def get_auth_headers(client, email: str, password: str, is_admin: bool = False, 
 
 
 @pytest.fixture
-def db_session():
-    """Provide a database session for tests."""
+def db_session(client):
+    """Provide a database session for tests (requires client to ensure tables exist)."""
     db = TestingSessionLocal()
     try:
         yield db
