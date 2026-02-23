@@ -5,7 +5,7 @@ Unit tests for Book Authorization endpoints.
 from fastapi.testclient import TestClient
 from src.models.book import Book
 from datetime import date
-from tests.conftest import get_auth_headers, create_test_author, create_test_book, create_admin_user
+from tests.conftest import get_auth_headers, create_test_author, create_test_book
 
 # Standard strong password for tests
 STRONG_PASSWORD = "TestPassword123!"
