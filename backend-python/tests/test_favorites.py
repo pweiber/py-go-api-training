@@ -297,6 +297,6 @@ class TestFavorites:
 
         data = response.json()
         assert len(data) == 1
-        assert data[0]["title"] == "Details Book"
-        assert "isbn" in data[0]
-        assert "description" in data[0]
+        assert data[0]["book"]["title"] == "Details Book"
+        assert "isbn" in data[0] ["book"]
+        assert "description" in data[0] ["book"]
