@@ -90,7 +90,7 @@ def test_search_response_time(client):
 
 
 def test_pagination_large_dataset(client):
-    """100+ records still perform well."""
+    """Pagination over a large dataset still performs well (50 books on in-memory SQLite)."""
     admin_headers = get_auth_headers(client, "pagination_perf@example.com", STRONG_PASSWORD, is_admin=True)
 
     # Create a large dataset (50 books - scaled down for in-memory SQLite)
