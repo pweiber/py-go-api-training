@@ -38,7 +38,7 @@ class TestGetDbDependency:
         with patch('src.core.database.SessionLocal', return_value=mock_session):
             gen = get_db()
             try:
-                db = next(gen)
+                next(gen)
                 # Simulate an exception being thrown
                 gen.throw(ValueError("Test exception"))
             except ValueError:
@@ -56,7 +56,7 @@ class TestGetDbDependency:
 
         with patch('src.core.database.SessionLocal', return_value=mock_session):
             gen = get_db()
-            db = next(gen)
+            next(gen)
 
             # Complete the generator normally
             try:
