@@ -738,7 +738,7 @@ def test_list_books_with_combined_filters(client, create_book, create_author, cr
 
     # Filter by both author and category
     response = client.get(
-        f"/api/v1/books?author_id={author['id']}&category_id={category['id']}"
+        f"/api/v1/books?author_id={author['id']}&category={category['name']}"
     )
 
     assert response.status_code == 200
