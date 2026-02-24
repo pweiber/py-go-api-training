@@ -104,7 +104,7 @@ def test_get_author_with_books(client):
     author_id = author["id"]
 
     # Create a book linked to this author using new schema
-    book = create_test_book(
+    create_test_book(
         client,
         title="Test Book",
         isbn="9781111111111",
