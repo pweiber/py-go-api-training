@@ -2,7 +2,7 @@
 Unit tests for Review CRUD endpoints.
 """
 import pytest
-from tests.conftest import get_auth_headers, STRONG_PASSWORD
+from tests.conftest import get_auth_headers, create_test_book, STRONG_PASSWORD
 
 
 def test_create_review(client):
@@ -11,14 +11,9 @@ def test_create_review(client):
     owner_headers = get_auth_headers(client, "book_owner@example.com", STRONG_PASSWORD, is_admin=True)
 
     # Create a book
-    book_data = {
-        "title": "Reviewable Book",
-        "author": "Test Author",
-        "isbn": "978-7777777771",
-        "published_date": "2023-01-15"
-    }
-    book_response = client.post("/api/v1/books", json=book_data, headers=owner_headers)
-    book_id = book_response.json()["id"]
+    book = create_test_book(client, title="Reviewable Book", isbn="9787777777771",
+                            published_date="2023-01-15", admin_headers=owner_headers)
+    book_id = book["id"]
 
     # Create reviewer (different user)
     reviewer_headers = get_auth_headers(client, "reviewer@example.com", STRONG_PASSWORD, is_admin=True)
@@ -46,14 +41,9 @@ def test_review_rating_validation(client):
     owner_headers = get_auth_headers(client, "rating_owner@example.com", STRONG_PASSWORD, is_admin=True)
 
     # Create a book
-    book_data = {
-        "title": "Rating Test Book",
-        "author": "Test Author",
-        "isbn": "978-7777777772",
-        "published_date": "2023-01-15"
-    }
-    book_response = client.post("/api/v1/books", json=book_data, headers=owner_headers)
-    book_id = book_response.json()["id"]
+    book = create_test_book(client, title="Rating Test Book", isbn="9787777777772",
+                            published_date="2023-01-15", admin_headers=owner_headers)
+    book_id = book["id"]
 
     # Create reviewer
     reviewer_headers = get_auth_headers(client, "rating_test@example.com", STRONG_PASSWORD, is_admin=True)
@@ -78,14 +68,9 @@ def test_one_review_per_user_per_book(client):
     owner_headers = get_auth_headers(client, "one_review_owner@example.com", STRONG_PASSWORD, is_admin=True)
 
     # Create a book
-    book_data = {
-        "title": "One Review Book",
-        "author": "Test Author",
-        "isbn": "978-7777777773",
-        "published_date": "2023-01-15"
-    }
-    book_response = client.post("/api/v1/books", json=book_data, headers=owner_headers)
-    book_id = book_response.json()["id"]
+    book = create_test_book(client, title="One Review Book", isbn="9787777777773",
+                            published_date="2023-01-15", admin_headers=owner_headers)
+    book_id = book["id"]
 
     # Create reviewer
     reviewer_headers = get_auth_headers(client, "one_reviewer@example.com", STRONG_PASSWORD, is_admin=True)
@@ -112,14 +97,9 @@ def test_cannot_review_own_book(client):
     owner_headers = get_auth_headers(client, "self_review@example.com", STRONG_PASSWORD, is_admin=True)
 
     # Create a book
-    book_data = {
-        "title": "My Own Book",
-        "author": "Self Author",
-        "isbn": "978-7777777774",
-        "published_date": "2023-01-15"
-    }
-    book_response = client.post("/api/v1/books", json=book_data, headers=owner_headers)
-    book_id = book_response.json()["id"]
+    book = create_test_book(client, title="My Own Book", isbn="9787777777774",
+                            published_date="2023-01-15", admin_headers=owner_headers)
+    book_id = book["id"]
 
     # Try to review own book
     review_data = {
@@ -138,14 +118,9 @@ def test_delete_own_review(client):
     owner_headers = get_auth_headers(client, "del_review_owner@example.com", STRONG_PASSWORD, is_admin=True)
 
     # Create a book
-    book_data = {
-        "title": "Deletable Review Book",
-        "author": "Test Author",
-        "isbn": "978-7777777775",
-        "published_date": "2023-01-15"
-    }
-    book_response = client.post("/api/v1/books", json=book_data, headers=owner_headers)
-    book_id = book_response.json()["id"]
+    book = create_test_book(client, title="Deletable Review Book", isbn="9787777777775",
+                            published_date="2023-01-15", admin_headers=owner_headers)
+    book_id = book["id"]
 
     # Create reviewer
     reviewer_headers = get_auth_headers(client, "del_reviewer@example.com", STRONG_PASSWORD, is_admin=True)
@@ -175,14 +150,9 @@ def test_cannot_delete_others_review(client):
     owner_headers = get_auth_headers(client, "others_review_owner@example.com", STRONG_PASSWORD, is_admin=True)
 
     # Create a book
-    book_data = {
-        "title": "Others Review Book",
-        "author": "Test Author",
-        "isbn": "978-7777777776",
-        "published_date": "2023-01-15"
-    }
-    book_response = client.post("/api/v1/books", json=book_data, headers=owner_headers)
-    book_id = book_response.json()["id"]
+    book = create_test_book(client, title="Others Review Book", isbn="9787777777776",
+                            published_date="2023-01-15", admin_headers=owner_headers)
+    book_id = book["id"]
 
     # Create original reviewer (regular user, not admin)
     reviewer1_headers = get_auth_headers(client, "orig_reviewer@example.com", STRONG_PASSWORD)
@@ -211,14 +181,9 @@ def test_get_book_reviews(client):
     owner_headers = get_auth_headers(client, "book_reviews_owner@example.com", STRONG_PASSWORD, is_admin=True)
 
     # Create a book
-    book_data = {
-        "title": "Book With Reviews",
-        "author": "Test Author",
-        "isbn": "978-7777777777",
-        "published_date": "2023-01-15"
-    }
-    book_response = client.post("/api/v1/books", json=book_data, headers=owner_headers)
-    book_id = book_response.json()["id"]
+    book = create_test_book(client, title="Book With Reviews", isbn="9787777777777",
+                            published_date="2023-01-15", admin_headers=owner_headers)
+    book_id = book["id"]
 
     # Create multiple reviewers and reviews
     for i in range(3):
@@ -296,14 +261,10 @@ def test_update_review_unauthorized(client):
     """Test updating another user's review returns 403."""
     # Create book owner (admin to create book)
     owner_headers = get_auth_headers(client, "update_owner@example.com", STRONG_PASSWORD, is_admin=True)
-    book_response = client.post("/api/v1/books", headers=owner_headers, json={
-        "title": "Update Test Book",
-        "author": "Test Author",
-        "isbn": "978-8888888880",
-        "published_date": "2023-01-01"
-    })
-    assert book_response.status_code == 201, f"Book creation failed: {book_response.json()}"
-    book_id = book_response.json()["id"]
+    book = create_test_book(client, title="Update Test Book", isbn="9788888888880",
+                            published_date="2023-01-01", admin_headers=owner_headers)
+    assert book["id"], f"Book creation failed: {book}"
+    book_id = book["id"]
 
     reviewer1_headers = get_auth_headers(client, "update_reviewer1@example.com", STRONG_PASSWORD)
     review_response = client.post("/api/v1/reviews", headers=reviewer1_headers, json={
@@ -338,14 +299,10 @@ def test_delete_review_not_found(client):
 def test_delete_review_unauthorized_non_admin(client):
     """Test non-admin user cannot delete another user's review."""
     owner_headers = get_auth_headers(client, "delete_unauth_owner@example.com", STRONG_PASSWORD, is_admin=True)
-    book_response = client.post("/api/v1/books", headers=owner_headers, json={
-        "title": "Delete Unauth Book",
-        "author": "Test Author",
-        "isbn": "978-8888888881",
-        "published_date": "2023-01-01"
-    })
-    assert book_response.status_code == 201
-    book_id = book_response.json()["id"]
+    book = create_test_book(client, title="Delete Unauth Book", isbn="9788888888881",
+                            published_date="2023-01-01", admin_headers=owner_headers)
+    assert book["id"]
+    book_id = book["id"]
 
     reviewer1_headers = get_auth_headers(client, "delete_reviewer1@example.com", STRONG_PASSWORD)
     review_response = client.post("/api/v1/reviews", headers=reviewer1_headers, json={
@@ -367,14 +324,10 @@ def test_delete_review_unauthorized_non_admin(client):
 def test_get_book_reviews_negative_skip(client):
     """Test getting book reviews with negative skip returns 400."""
     owner_headers = get_auth_headers(client, "skip_owner@example.com", STRONG_PASSWORD, is_admin=True)
-    book_response = client.post("/api/v1/books", headers=owner_headers, json={
-        "title": "Skip Test Book",
-        "author": "Test Author",
-        "isbn": "978-8888888882",
-        "published_date": "2023-01-01"
-    })
-    assert book_response.status_code == 201
-    book_id = book_response.json()["id"]
+    book = create_test_book(client, title="Skip Test Book", isbn="9788888888882",
+                            published_date="2023-01-01", admin_headers=owner_headers)
+    assert book["id"]
+    book_id = book["id"]
 
     response = client.get(f"/api/v1/books/{book_id}/reviews?skip=-1")
 
@@ -385,14 +338,10 @@ def test_get_book_reviews_negative_skip(client):
 def test_get_book_reviews_invalid_limit(client):
     """Test getting book reviews with invalid limit returns 400."""
     owner_headers = get_auth_headers(client, "limit_owner@example.com", STRONG_PASSWORD, is_admin=True)
-    book_response = client.post("/api/v1/books", headers=owner_headers, json={
-        "title": "Limit Test Book",
-        "author": "Test Author",
-        "isbn": "978-8888888883",
-        "published_date": "2023-01-01"
-    })
-    assert book_response.status_code == 201
-    book_id = book_response.json()["id"]
+    book = create_test_book(client, title="Limit Test Book", isbn="9788888888883",
+                            published_date="2023-01-01", admin_headers=owner_headers)
+    assert book["id"]
+    book_id = book["id"]
 
     response = client.get(f"/api/v1/books/{book_id}/reviews?limit=0")
 
@@ -403,14 +352,10 @@ def test_get_book_reviews_invalid_limit(client):
 def test_get_book_reviews_limit_capping(client):
     """Test that limit is capped at 100."""
     owner_headers = get_auth_headers(client, "cap_owner@example.com", STRONG_PASSWORD, is_admin=True)
-    book_response = client.post("/api/v1/books", headers=owner_headers, json={
-        "title": "Cap Test Book",
-        "author": "Test Author",
-        "isbn": "978-8888888884",
-        "published_date": "2023-01-01"
-    })
-    assert book_response.status_code == 201
-    book_id = book_response.json()["id"]
+    book = create_test_book(client, title="Cap Test Book", isbn="9788888888884",
+                            published_date="2023-01-01", admin_headers=owner_headers)
+    assert book["id"]
+    book_id = book["id"]
 
     # Request with limit=200 should be capped to 100
     response = client.get(f"/api/v1/books/{book_id}/reviews?limit=200")
@@ -436,14 +381,10 @@ def test_update_review_success(client):
     """Test successfully updating own review."""
     # Create book owner (admin to create book)
     owner_headers = get_auth_headers(client, "update_success_owner@example.com", STRONG_PASSWORD, is_admin=True)
-    book_response = client.post("/api/v1/books", headers=owner_headers, json={
-        "title": "Update Success Book",
-        "author": "Test Author",
-        "isbn": "978-8888888890",
-        "published_date": "2023-01-01"
-    })
-    assert book_response.status_code == 201
-    book_id = book_response.json()["id"]
+    book = create_test_book(client, title="Update Success Book", isbn="9788888888890",
+                            published_date="2023-01-01", admin_headers=owner_headers)
+    assert book["id"]
+    book_id = book["id"]
 
     # Create reviewer and review
     reviewer_headers = get_auth_headers(client, "update_success_reviewer@example.com", STRONG_PASSWORD)
@@ -469,14 +410,10 @@ def test_admin_can_delete_any_review(client):
     """Test that admin users can delete any review."""
     # Create book owner (admin)
     owner_headers = get_auth_headers(client, "admin_delete_owner@example.com", STRONG_PASSWORD, is_admin=True)
-    book_response = client.post("/api/v1/books", headers=owner_headers, json={
-        "title": "Admin Delete Test Book",
-        "author": "Test Author",
-        "isbn": "978-8888888891",
-        "published_date": "2023-01-01"
-    })
-    assert book_response.status_code == 201
-    book_id = book_response.json()["id"]
+    book = create_test_book(client, title="Admin Delete Test Book", isbn="9788888888891",
+                            published_date="2023-01-01", admin_headers=owner_headers)
+    assert book["id"]
+    book_id = book["id"]
 
     # Create regular user and their review
     reviewer_headers = get_auth_headers(client, "regular_reviewer@example.com", STRONG_PASSWORD)
