@@ -28,6 +28,7 @@ def upgrade() -> None:
     sa.ForeignKeyConstraint(['book_id'], ['books.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('book_id', 'author_id')
     )
+    op.create_index(op.f('ix_book_authors_author_id'), 'book_authors', ['author_id'], unique=False)
     op.drop_index('ix_book_categories_book_id', table_name='book_categories')
     op.drop_index('ix_book_categories_category_id', table_name='book_categories')
     op.drop_index('ix_books_author_id', table_name='books')
@@ -52,5 +53,6 @@ def downgrade() -> None:
     op.create_index('ix_books_author_id', 'books', ['author_id'], unique=False)
     op.create_index('ix_book_categories_category_id', 'book_categories', ['category_id'], unique=False)
     op.create_index('ix_book_categories_book_id', 'book_categories', ['book_id'], unique=False)
+    op.drop_index(op.f('ix_book_authors_author_id'), table_name='book_authors')
     op.drop_table('book_authors')
     # ### end Alembic commands ###
