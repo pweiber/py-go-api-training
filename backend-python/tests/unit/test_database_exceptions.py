@@ -96,6 +96,7 @@ class TestIntegrityErrorHandling:
         }
 
         response1 = client.post("/api/v1/books", json=book1_data, headers=admin_headers)
+        assert response1.status_code == 201
         response2 = client.post("/api/v1/books", json=book2_data, headers=admin_headers)
 
         book2_id = response2.json()["id"]
