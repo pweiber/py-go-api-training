@@ -175,17 +175,8 @@ async def get_book(book_id: int, db: Session = Depends(get_db)):
 
         book, avg_rating = result
 
-        return BookWithDetailsResponse(
-            id=book.id,
-            title=book.title,
-            isbn=book.isbn,
-            published_date=book.published_date,
-            description=book.description,
-            created_by=book.created_by,
-            categories=book.categories,
-            authors=book.authors,
-            average_rating=round(avg_rating, 2) if avg_rating is not None else None
-        )
+        book.average_rating = round(avg_rating, 2) if avg_rating is not None else None
+        return BookWithDetailsResponse.model_validate(book)
     except HTTPException:
         # Re-raise HTTP exceptions (like 404)
         raise
