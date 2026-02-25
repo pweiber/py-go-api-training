@@ -2,12 +2,12 @@
 Unit tests for Author CRUD endpoints.
 """
 import pytest
-from tests.conftest import get_auth_headers, STRONG_PASSWORD
+from tests.conftest import get_auth_headers, create_test_author, create_test_book, STRONG_PASSWORD
 
 
 def test_create_author(client):
     """Test creating an author with valid data."""
-    auth_headers = get_auth_headers(client, "author_creator@example.com", STRONG_PASSWORD, role="admin")
+    auth_headers = get_auth_headers(client, "author_creator@example.com", STRONG_PASSWORD, is_admin=True)
 
     author_data = {
         "name": "J.K. Rowling",
@@ -29,7 +29,7 @@ def test_create_author(client):
 
 def test_create_author_validation(client):
     """Test creating an author with missing required fields."""
-    auth_headers = get_auth_headers(client, "author_val@example.com", STRONG_PASSWORD, role="admin")
+    auth_headers = get_auth_headers(client, "author_val@example.com", STRONG_PASSWORD, is_admin=True)
 
     # Missing name (required field)
     author_data = {
@@ -42,7 +42,7 @@ def test_create_author_validation(client):
 
 def test_create_author_minimal(client):
     """Test creating an author with only required fields."""
-    auth_headers = get_auth_headers(client, "author_min@example.com", STRONG_PASSWORD, role="admin")
+    auth_headers = get_auth_headers(client, "author_min@example.com", STRONG_PASSWORD, is_admin=True)
 
     author_data = {
         "name": "Minimal Author"
@@ -59,7 +59,7 @@ def test_create_author_minimal(client):
 
 def test_get_authors(client):
     """Test getting all authors."""
-    auth_headers = get_auth_headers(client, "author_list@example.com", STRONG_PASSWORD, role="admin")
+    auth_headers = get_auth_headers(client, "author_list@example.com", STRONG_PASSWORD, is_admin=True)
 
     # Create an author first
     client.post("/api/v1/authors", json={"name": "Test Author"}, headers=auth_headers)
@@ -74,7 +74,7 @@ def test_get_authors(client):
 
 def test_get_author_by_id(client):
     """Test getting a specific author by ID."""
-    auth_headers = get_auth_headers(client, "author_get@example.com", STRONG_PASSWORD, role="admin")
+    auth_headers = get_auth_headers(client, "author_get@example.com", STRONG_PASSWORD, is_admin=True)
 
     # Create an author
     create_response = client.post("/api/v1/authors", json={"name": "Specific Author"}, headers=auth_headers)
@@ -97,21 +97,21 @@ def test_get_author_not_found(client):
 
 def test_get_author_with_books(client):
     """Test that author response includes their books."""
-    auth_headers = get_auth_headers(client, "author_books@example.com", STRONG_PASSWORD, role="admin")
+    admin_headers = get_auth_headers(client, "author_books@example.com", STRONG_PASSWORD, is_admin=True)
 
     # Create an author
-    author_response = client.post("/api/v1/authors", json={"name": "Author With Books"}, headers=auth_headers)
-    author_id = author_response.json()["id"]
+    author = create_test_author(client, "Author With Books", admin_headers=admin_headers)
+    author_id = author["id"]
 
-    # Create a book linked to this author
-    book_data = {
-        "title": "Test Book",
-        "author": "Author With Books",
-        "author_id": author_id,
-        "isbn": "978-1111111111",
-        "published_date": "2023-01-15"
-    }
-    client.post("/api/v1/books", json=book_data, headers=auth_headers)
+    # Create a book linked to this author using new schema
+    create_test_book(
+        client,
+        title="Test Book",
+        isbn="9781111111111",
+        published_date="2023-01-15",
+        author_ids=[author_id],
+        admin_headers=admin_headers
+    )
 
     # Get author with books
     response = client.get(f"/api/v1/authors/{author_id}")
@@ -125,7 +125,7 @@ def test_get_author_with_books(client):
 
 def test_update_author(client):
     """Test updating an author."""
-    auth_headers = get_auth_headers(client, "author_update@example.com", STRONG_PASSWORD, role="admin")
+    auth_headers = get_auth_headers(client, "author_update@example.com", STRONG_PASSWORD, is_admin=True)
 
     # Create an author
     create_response = client.post("/api/v1/authors", json={"name": "Original Name"}, headers=auth_headers)
@@ -146,7 +146,7 @@ def test_update_author(client):
 
 def test_delete_author_without_books(client):
     """Test deleting an author who has no books."""
-    auth_headers = get_auth_headers(client, "author_del@example.com", STRONG_PASSWORD, role="admin")
+    auth_headers = get_auth_headers(client, "author_del@example.com", STRONG_PASSWORD, is_admin=True)
 
     # Create an author
     create_response = client.post("/api/v1/authors", json={"name": "Author To Delete"}, headers=auth_headers)
@@ -164,31 +164,31 @@ def test_delete_author_without_books(client):
 
 def test_delete_author_with_books(client):
     """Test that deleting an author with books returns 409 conflict."""
-    auth_headers = get_auth_headers(client, "author_del_books@example.com", STRONG_PASSWORD, role="admin")
+    admin_headers = get_auth_headers(client, "author_del_books@example.com", STRONG_PASSWORD, is_admin=True)
 
     # Create an author
-    author_response = client.post("/api/v1/authors", json={"name": "Author With Books"}, headers=auth_headers)
-    author_id = author_response.json()["id"]
+    author = create_test_author(client, "Author With Books", admin_headers=admin_headers)
+    author_id = author["id"]
 
-    # Create a book linked to this author
-    book_data = {
-        "title": "Test Book",
-        "author": "Author With Books",
-        "author_id": author_id,
-        "isbn": "978-2222222222",
-        "published_date": "2023-01-15"
-    }
-    client.post("/api/v1/books", json=book_data, headers=auth_headers)
+    # Create a book linked to this author using new schema
+    create_test_book(
+        client,
+        title="Test Book",
+        isbn="9782222222222",
+        published_date="2023-01-15",
+        author_ids=[author_id],
+        admin_headers=admin_headers
+    )
 
     # Try to delete the author (should fail)
-    response = client.delete(f"/api/v1/authors/{author_id}", headers=auth_headers)
+    response = client.delete(f"/api/v1/authors/{author_id}", headers=admin_headers)
     assert response.status_code == 409
     assert "book(s)" in response.json()["detail"]
 
 
 def test_delete_author_requires_admin(client):
     """Test that only admins can delete authors."""
-    admin_headers = get_auth_headers(client, "admin_auth@example.com", STRONG_PASSWORD, role="admin")
+    admin_headers = get_auth_headers(client, "admin_auth@example.com", STRONG_PASSWORD, is_admin=True)
     user_headers = get_auth_headers(client, "regular_user@example.com", STRONG_PASSWORD)
 
     # Create an author as admin
@@ -215,7 +215,7 @@ def test_create_author_requires_admin(client):
 
 def test_update_author_requires_admin(client):
     """Test that only admins can update authors."""
-    admin_headers = get_auth_headers(client, "admin_update@example.com", STRONG_PASSWORD, role="admin")
+    admin_headers = get_auth_headers(client, "admin_update@example.com", STRONG_PASSWORD, is_admin=True)
     user_headers = get_auth_headers(client, "regular_user_update@example.com", STRONG_PASSWORD)
 
     # Create an author as admin
@@ -229,6 +229,4 @@ def test_update_author_requires_admin(client):
     }
     response = client.put(f"/api/v1/authors/{author_id}", json=update_data, headers=user_headers)
     assert response.status_code == 403
-
-
 

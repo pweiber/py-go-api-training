@@ -2,7 +2,7 @@
 Unit tests for Statistics endpoint.
 """
 import pytest
-from tests.conftest import get_auth_headers, STRONG_PASSWORD
+from tests.conftest import get_auth_headers, create_test_author, create_test_book, create_test_category, STRONG_PASSWORD
 
 
 def test_statistics_returns_counts(client):
@@ -39,26 +39,25 @@ def test_statistics_empty_database(client):
 
 def test_statistics_with_data(client):
     """Test statistics with actual data."""
-    auth_headers = get_auth_headers(client, "stats_user@example.com", STRONG_PASSWORD, role="admin")
+    admin_headers = get_auth_headers(client, "stats_user@example.com", STRONG_PASSWORD, is_admin=True)
 
     # Create authors
     for i in range(3):
-        client.post("/api/v1/authors", json={"name": f"Author {i}"}, headers=auth_headers)
+        create_test_author(client, f"Author {i}", admin_headers=admin_headers)
 
     # Create categories
     for i in range(2):
-        client.post("/api/v1/categories", json={"name": f"Category {i}"}, headers=auth_headers)
+        create_test_category(client, f"Category {i}", admin_headers=admin_headers)
 
-    # Create books
-    owner_headers = get_auth_headers(client, "stats_owner@example.com", STRONG_PASSWORD)
+    # Create books (requires admin)
     for i in range(5):
-        book_data = {
-            "title": f"Stats Book {i}",
-            "author": "Test Author",
-            "isbn": f"978-555555555{i}",
-            "published_date": "2023-01-15"
-        }
-        client.post("/api/v1/books", json=book_data, headers=owner_headers)
+        create_test_book(
+            client,
+            title=f"Stats Book {i}",
+            isbn=f"978555555555{i}",
+            published_date="2023-01-15",
+            admin_headers=admin_headers
+        )
 
     response = client.get("/api/v1/stats")
     assert response.status_code == 200
@@ -71,20 +70,20 @@ def test_statistics_with_data(client):
 
 def test_statistics_average_rating(client):
     """Test that average rating is calculated correctly."""
-    # Create book owner
-    owner_headers = get_auth_headers(client, "stats_avg_owner@example.com", STRONG_PASSWORD)
+    # Create admin and books
+    admin_headers = get_auth_headers(client, "stats_avg_owner@example.com", STRONG_PASSWORD, is_admin=True)
 
     # Create books
     book_ids = []
     for i in range(2):
-        book_data = {
-            "title": f"Avg Rating Book {i}",
-            "author": "Test Author",
-            "isbn": f"978-666666666{i}",
-            "published_date": "2023-01-15"
-        }
-        response = client.post("/api/v1/books", json=book_data, headers=owner_headers)
-        book_ids.append(response.json()["id"])
+        book = create_test_book(
+            client,
+            title=f"Avg Rating Book {i}",
+            isbn=f"978666666666{i}",
+            published_date="2023-01-15",
+            admin_headers=admin_headers
+        )
+        book_ids.append(book["id"])
 
     # Create reviews with known ratings
     ratings = [5, 4, 3, 4, 5]  # Average should be 4.2

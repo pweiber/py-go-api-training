@@ -49,14 +49,13 @@ async def get_books(
         page: Page number (default 1)
         size: Items per page (default 10, max 100)
 
-    Returns:
-        Paginated list of books with details
+    Returns:Paginated list of books with details
 
     Raises:
         HTTPException: 500 if database error occurs
     """
     try:
-        # Subquery to calculate average rating per book (use for all books, not just when filtering)
+        # Subquery to calculate average rating per book
         rating_subquery = db.query(
             Review.book_id,
             func.avg(Review.rating).label('avg_rating')
@@ -68,7 +67,7 @@ async def get_books(
             Book.id == rating_subquery.c.book_id
         ).options(
             selectinload(Book.categories),
-            selectinload(Book.author_rel)
+            selectinload(Book.authors)
         )
 
         # Apply search filter
@@ -81,9 +80,9 @@ async def get_books(
                 )
             )
 
-        # Apply author filter
+        # Apply author filter (using many-to-many relationship)
         if author_id:
-            query = query.filter(Book.author_id == author_id)
+            query = query.join(Book.authors).filter(Author.id == author_id)
 
         # Apply category filter
         if category:
@@ -92,6 +91,9 @@ async def get_books(
         # Apply min_rating filter
         if min_rating is not None:
             query = query.filter(rating_subquery.c.avg_rating >= min_rating)
+
+        # Apply distinct to avoid duplicate rows from many-to-many joins (authors/categories)
+        query = query.distinct()
 
         # Get total count before pagination
         total = query.count()
@@ -109,14 +111,14 @@ async def get_books(
             book_dict = {
                 "id": book.id,
                 "title": book.title,
-                "author": book.author,
-                "author_id": book.author_id,
                 "isbn": book.isbn,
                 "published_date": book.published_date,
                 "description": book.description,
                 "created_by": book.created_by,
+                "created_at": book.created_at,
+                "updated_at": book.updated_at,
                 "categories": book.categories,
-                "author_rel": book.author_rel,
+                "authors": book.authors,
                 "average_rating": round(avg_rating, 2) if avg_rating is not None else None
             }
 
@@ -142,11 +144,11 @@ async def get_books(
 async def get_book(book_id: int, db: Session = Depends(get_db)):
     """
     Get a specific book by ID.
-    
+
     Args:
         book_id: The ID of the book to retrieve
         db: Database session dependency
-        
+
     Returns:
         Book details with categories and average rating
 
@@ -167,7 +169,7 @@ async def get_book(book_id: int, db: Session = Depends(get_db)):
             Book.id == rating_subquery.c.book_id
         ).options(
             selectinload(Book.categories),
-            selectinload(Book.author_rel)
+            selectinload(Book.authors)
         ).filter(Book.id == book_id).first()
 
         if result is None:
@@ -178,19 +180,8 @@ async def get_book(book_id: int, db: Session = Depends(get_db)):
 
         book, avg_rating = result
 
-        return BookWithDetailsResponse(
-            id=book.id,
-            title=book.title,
-            author=book.author,
-            author_id=book.author_id,
-            isbn=book.isbn,
-            published_date=book.published_date,
-            description=book.description,
-            created_by=book.created_by,
-            categories=book.categories,
-            author_rel=book.author_rel,
-            average_rating=round(avg_rating, 2) if avg_rating is not None else None
-        )
+        book.average_rating = round(avg_rating, 2) if avg_rating is not None else None
+        return BookWithDetailsResponse.model_validate(book)
     except HTTPException:
         # Re-raise HTTP exceptions (like 404)
         raise
@@ -202,75 +193,110 @@ async def get_book(book_id: int, db: Session = Depends(get_db)):
         )
 
 
-@router.post("/books", response_model=BookResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/books", response_model=BookWithDetailsResponse, status_code=status.HTTP_201_CREATED)
 async def create_book(
-    book: BookCreate, 
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+        book: BookCreate,
+        db: Session = Depends(get_db),
+        current_user: User = Depends(get_admin_user)
 ):
     """
-    Create a new book.
-    
-    Requires authentication. The creating user is recorded as the owner.
-    
+    Create a new book (admin only).
+
+    Supports multiple authors and categories. The creating user is recorded as the owner.
+
     Args:
-        book: Book data to create
+        book: Book data to create (with author_ids and category_ids)
         db: Database session dependency
-        current_user: Authenticated user creating the book
-        
+        current_user: Authenticated admin user creating the book
+
     Returns:
-        Created book with ID
-        
+        Created book with ID and relationships
+
     Raises:
-        HTTPException: 400 if ISBN already exists
+        HTTPException: 400 if ISBN already exists or invalid data
+        HTTPException: 404 if authors/categories not found
         HTTPException: 500 if database error occurs
     """
-    # Create new book instance
-    db_book = Book(
-        title=book.title,
-        author=book.author,
-        author_id=book.author_id,
-        isbn=book.isbn,
-        published_date=book.published_date,
-        description=book.description,
-        created_by=current_user.id
-    )
-    
-    # Validate and auto-sync author string from Author model if author_id is provided
-    # This ensures backward compatibility and data consistency
-    if book.author_id is not None:
-        author_obj = db.query(Author).filter(Author.id == book.author_id).first()
-        if author_obj:
-            db_book.author = author_obj.name
-            logger.info(f"Auto-synced author string '{author_obj.name}' from author_id {book.author_id}")
-        else:
+    from datetime import datetime
+
+    try:
+        # Convert string date to Python date object
+        try:
+            published_date = datetime.strptime(book.published_date, "%Y-%m-%d").date()
+        except ValueError:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Author with id {book.author_id} not found"
+                detail="Invalid date format. Use YYYY-MM-DD"
             )
 
-    # Add to database with exception handling
-    try:
+        # Create new book instance
+        db_book = Book(
+            title=book.title,
+            isbn=book.isbn,
+            published_date=published_date,
+            description=book.description,
+            created_by=current_user.id
+        )
+
+        # Add authors if provided
+        if book.author_ids:
+            authors = db.query(Author).filter(Author.id.in_(book.author_ids)).all()
+            if len(authors) != len(book.author_ids):
+                found_ids = {author.id for author in authors}
+                missing_ids = set(book.author_ids) - found_ids
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Authors not found: {list(missing_ids)}"
+                )
+            db_book.authors = authors
+            logger.info(f"Added {len(authors)} author(s) to book")
+
+        # Add categories if provided
+        if book.category_ids:
+            categories = db.query(Category).filter(Category.id.in_(book.category_ids)).all()
+            if len(categories) != len(book.category_ids):
+                found_ids = {cat.id for cat in categories}
+                missing_ids = set(book.category_ids) - found_ids
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Categories not found: {list(missing_ids)}"
+                )
+            db_book.categories = categories
+            logger.info(f"Added {len(categories)} category(ies) to book")
+
+        # Add to database with exception handling
         db.add(db_book)
         db.commit()
         db.refresh(db_book)
 
-        logger.info(f"Successfully created book with ISBN {book.isbn} (ID: {db_book.id}) by User {current_user.id}")
+        # Ensure relationships are loaded
+        _ = db_book.authors
+        _ = db_book.categories
+
+        logger.info(
+            f"Successfully created book '{book.title}' with ISBN {book.isbn} "
+            f"(ID: {db_book.id}) by User {current_user.id}"
+        )
         return db_book
 
+    except HTTPException:
+        # Re-raise HTTP exceptions (validation errors, not found, etc.)
+        db.rollback()
+        raise
     except IntegrityError as e:
         db.rollback()
         error_message = str(e.orig) if e.orig else str(e)
         logger.error(f"Integrity error creating book: {error_message}")
 
         # Handle duplicate ISBN constraint violation
-        if "isbn" in error_message.lower() and ("unique" in error_message.lower() or "duplicate" in error_message.lower()):
+        if "isbn" in error_message.lower() and (
+                "unique" in error_message.lower() or "duplicate" in error_message.lower()):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Book with ISBN {book.isbn} already exists"
             )
 
-        # Handle other integrity errors (NOT NULL, CHECK constraints, etc.)
+        # Handle other integrity errors
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Database integrity constraint violated"
@@ -285,79 +311,93 @@ async def create_book(
         )
 
 
-@router.put("/books/{book_id}", response_model=BookResponse, status_code=status.HTTP_200_OK)
+@router.put("/books/{book_id}", response_model=BookWithDetailsResponse, status_code=status.HTTP_200_OK)
 async def update_book(
-    book_id: int, 
-    book: BookUpdate, 
+    book_id: int,
+    book: BookUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """
     Update an existing book.
-    
+
     Requires authentication. Only the Owner or an Admin can update a book.
-    
+
     Authorization Rules:
         - Admin users can update any book
         - Regular users can only update books they created
         - Legacy books (created_by=None) can only be updated by admins
-          (maintained for backward compatibility with pre-auth books)
 
     Args:
         book_id: The ID of the book to update
         book: Book data to update
         db: Database session dependency
         current_user: Authenticated user requesting update
-        
+
     Returns:
         Updated book
-        
+
     Raises:
         HTTPException: 404 if book not found
         HTTPException: 403 if user is not authorized to update this book
-        HTTPException: 400 if ISBN conflict
+        HTTPException: 400 if ISBN conflict or invalid author/category IDs
         HTTPException: 500 if database error occurs
     """
     # Find the book
     db_book = db.query(Book).filter(Book.id == book_id).first()
-    
+
     if db_book is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Book with id {book_id} not found"
         )
-    
+
     # Authorization check: Admin OR Owner
-    # Note: Legacy books with created_by=None can only be updated by admins
-    # since (None != current_user.id) will always be True for non-admin users
     if current_user.role != UserRole.ADMIN and db_book.created_by != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You can only update your own books"
         )
-    
+
     # Update only provided fields
     update_data = book.model_dump(exclude_unset=True)
+
+    # Handle author_ids update
+    if 'author_ids' in update_data and update_data['author_ids'] is not None:
+        authors = db.query(Author).filter(Author.id.in_(update_data['author_ids'])).all()
+        if len(authors) != len(update_data['author_ids']):
+            missing = set(update_data['author_ids']) - {a.id for a in authors}
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Author(s) not found: {list(missing)}"
+            )
+        db_book.authors = authors
+        update_data.pop('author_ids')  # Remove from update_data since it's already handled
+
+    # Handle category_ids update
+    if 'category_ids' in update_data and update_data['category_ids'] is not None:
+        categories = db.query(Category).filter(Category.id.in_(update_data['category_ids'])).all()
+        if len(categories) != len(update_data['category_ids']):
+            missing = set(update_data['category_ids']) - {c.id for c in categories}
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Category(ies) not found: {list(missing)}"
+            )
+        db_book.categories = categories
+        update_data.pop('category_ids')  # Remove from update_data
+
+    # Apply remaining field updates
     for field, value in update_data.items():
         setattr(db_book, field, value)
-    
-    # Validate and auto-sync author string from Author model if author_id was updated
-    # This ensures backward compatibility and data consistency
-    if 'author_id' in update_data and update_data['author_id'] is not None:
-        author_obj = db.query(Author).filter(Author.id == update_data['author_id']).first()
-        if author_obj:
-            db_book.author = author_obj.name
-            logger.info(f"Auto-synced author string '{author_obj.name}' from author_id {update_data['author_id']}")
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Author with id {update_data['author_id']} not found"
-            )
 
     # Commit with exception handling
     try:
         db.commit()
         db.refresh(db_book)
+
+        # Ensure relationships are loaded
+        _ = db_book.authors
+        _ = db_book.categories
 
         logger.info(f"Successfully updated book ID {book_id}")
         return db_book
@@ -391,23 +431,23 @@ async def update_book(
 
 @router.delete("/books/{book_id}", status_code=status.HTTP_200_OK)
 async def delete_book(
-    book_id: int, 
+    book_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_admin_user)
 ):
     """
     Delete a book.
-    
+
     Requires Admin privileges.
-    
+
     Args:
         book_id: The ID of the book to delete
         db: Database session dependency
         current_user: Authenticated admin user
-        
+
     Returns:
         Success message
-        
+
     Raises:
         HTTPException: 404 if book not found
         HTTPException: 409 if book is referenced by other records
@@ -415,13 +455,13 @@ async def delete_book(
     """
     # Find the book
     db_book = db.query(Book).filter(Book.id == book_id).first()
-    
+
     if db_book is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Book with id {book_id} not found"
         )
-    
+
     # Delete with exception handling
     try:
         db.delete(db_book)

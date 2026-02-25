@@ -19,7 +19,7 @@ class Author(Base):
         birth_date: Author's date of birth
         nationality: Author's nationality (max 100 characters)
         created_at: Timestamp when author was created
-        books: Relationship to books by this author
+        books: Many-to-many relationship to books by this author
     """
     __tablename__ = "authors"
 
@@ -30,9 +30,8 @@ class Author(Base):
     nationality = Column(String(100), nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
-    # Relationship to books
-    books = relationship("Book", back_populates="author_rel")
+    # Many-to-many relationship to books (uses book_authors table defined in book.py)
+    books = relationship("Book", secondary="book_authors", back_populates="authors")
 
     def __repr__(self):
         return f"<Author(id={self.id}, name='{self.name}')>"
-

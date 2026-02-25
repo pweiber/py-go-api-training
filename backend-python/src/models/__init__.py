@@ -4,5 +4,6 @@ from src.models.user import User, UserRole
 from src.models.author import Author
 from src.models.category import Category, book_categories
 from src.models.review import Review
+from src.models.favorite import Favorite
 
-__all__ = ["Book", "User", "UserRole", "Author", "Category", "book_categories", "Review"]
+__all__ = ["Book", "User", "UserRole", "Author", "Category", "book_categories", "Review", "Favorite"]
