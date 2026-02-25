@@ -92,6 +92,9 @@ async def get_books(
         if min_rating is not None:
             query = query.filter(rating_subquery.c.avg_rating >= min_rating)
 
+        # Apply distinct to avoid duplicate rows from many-to-many joins (authors/categories)
+        query = query.distinct()
+
         # Get total count before pagination
         total = query.count()
 
@@ -112,6 +115,8 @@ async def get_books(
                 "published_date": book.published_date,
                 "description": book.description,
                 "created_by": book.created_by,
+                "created_at": book.created_at,
+                "updated_at": book.updated_at,
                 "categories": book.categories,
                 "authors": book.authors,
                 "average_rating": round(avg_rating, 2) if avg_rating is not None else None
