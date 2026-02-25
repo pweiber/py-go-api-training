@@ -5,7 +5,7 @@ These tests are written FIRST before implementation (TDD approach).
 They will fail until we implement the favorites feature.
 """
 import pytest
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date
 from tests.conftest import get_auth_headers, create_test_author, create_test_book, STRONG_PASSWORD
 
 
@@ -41,7 +41,7 @@ class TestFavoriteSchemas:
         assert book.id == 1
         assert book.title == "Test Book"
         assert book.isbn == "9781234567890"
-        assert book.published_date == "2023-01-15"
+        assert book.published_date == date(2023,1,15)
         assert book.description == "A test book"
 
     def test_favorite_book_response_schema_no_description(self):
