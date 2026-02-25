@@ -2,7 +2,7 @@
 Pydantic schemas for Favorite model.
 """
 from pydantic import BaseModel, ConfigDict
-from datetime import datetime
+from datetime import datetime, date
 
 
 class FavoriteResponse(BaseModel):
@@ -20,7 +20,7 @@ class FavoriteBookResponse(BaseModel):
     id: int
     title: str
     isbn: str
-    published_date: str
+    published_date: date
     description: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
