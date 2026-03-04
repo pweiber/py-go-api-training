@@ -25,17 +25,19 @@ RUN apt-get update && apt-get install -y \
     postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy Python dependencies from builder
-COPY --from=builder /root/.local /root/.local
+# 1. Create the non-root user FIRST
+RUN useradd -m -u 1000 appuser
 
-# Copy application code
-COPY . .
+# 2. Copy Python dependencies to the appuser's home directory and give them ownership
+COPY --from=builder --chown=appuser:appuser /root/.local /home/appuser/.local
 
-# Make sure scripts in .local are usable
-ENV PATH=/root/.local/bin:$PATH
+# 3. Copy application code and give ownership to appuser
+COPY --chown=appuser:appuser . /app
 
-# Create non-root user for security
-RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+# Update the PATH to point to the new location
+ENV PATH=/home/appuser/.local/bin:$PATH
+
+# Switch to the non-root user
 USER appuser
 
 # Expose port

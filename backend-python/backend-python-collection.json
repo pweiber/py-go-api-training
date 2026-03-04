@@ -1,0 +1,92 @@
+{
+"info": {
+"name": "Backend Python API",
+"description": "Imported from endpoints.md",
+"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+},
+"variable": [
+{ "key": "base_url", "value": "http://localhost:8000", "type": "string" },
+{ "key": "jwt_token", "value": "", "type": "string" }
+],
+"item": [
+{
+"name": "Root / Health",
+"item": [
+{ "name": "Root welcome message", "request": { "method": "GET", "url": "{{base_url}}/" } },
+{ "name": "Health check", "request": { "method": "GET", "url": "{{base_url}}/health" } }
+]
+},
+{
+"name": "Auth",
+"item": [
+{ "name": "Register", "request": { "method": "POST", "url": "{{base_url}}/api/v1/auth/register" } },
+{ "name": "Login", "request": { "method": "POST", "url": "{{base_url}}/api/v1/auth/login" } },
+{ "name": "Get Profile", "request": { "method": "GET", "url": "{{base_url}}/api/v1/auth/me" } },
+{ "name": "Update Profile", "request": { "method": "PUT", "url": "{{base_url}}/api/v1/auth/me" } }
+]
+},
+{
+"name": "Users",
+"item": [
+{ "name": "List users", "request": { "method": "GET", "url": "{{base_url}}/api/v1/users?skip=0&limit=10" } },
+{ "name": "Get user by ID", "request": { "method": "GET", "url": "{{base_url}}/api/v1/users/:user_id" } },
+{ "name": "Update user role", "request": { "method": "PATCH", "url": "{{base_url}}/api/v1/users/:user_id/role" } }
+]
+},
+{
+"name": "Books",
+"item": [
+{ "name": "List books", "request": { "method": "GET", "url": "{{base_url}}/api/v1/books?page=1&size=10" } },
+{ "name": "Get book by ID", "request": { "method": "GET", "url": "{{base_url}}/api/v1/books/:book_id" } },
+{ "name": "Create book", "request": { "method": "POST", "url": "{{base_url}}/api/v1/books" } },
+{ "name": "Update book", "request": { "method": "PUT", "url": "{{base_url}}/api/v1/books/:book_id" } },
+{ "name": "Delete book", "request": { "method": "DELETE", "url": "{{base_url}}/api/v1/books/:book_id" } },
+{ "name": "Replace book categories", "request": { "method": "PUT", "url": "{{base_url}}/api/v1/books/:book_id/categories" } }
+]
+},
+{
+"name": "Authors",
+"item": [
+{ "name": "List authors", "request": { "method": "GET", "url": "{{base_url}}/api/v1/authors" } },
+{ "name": "Get author by ID", "request": { "method": "GET", "url": "{{base_url}}/api/v1/authors/:author_id" } },
+{ "name": "Create author", "request": { "method": "POST", "url": "{{base_url}}/api/v1/authors" } },
+{ "name": "Update author", "request": { "method": "PUT", "url": "{{base_url}}/api/v1/authors/:author_id" } },
+{ "name": "Delete author", "request": { "method": "DELETE", "url": "{{base_url}}/api/v1/authors/:author_id" } }
+]
+},
+{
+"name": "Categories",
+"item": [
+{ "name": "List categories", "request": { "method": "GET", "url": "{{base_url}}/api/v1/categories" } },
+{ "name": "Get category by ID", "request": { "method": "GET", "url": "{{base_url}}/api/v1/categories/:category_id" } },
+{ "name": "Create category", "request": { "method": "POST", "url": "{{base_url}}/api/v1/categories" } },
+{ "name": "Update category", "request": { "method": "PUT", "url": "{{base_url}}/api/v1/categories/:category_id" } },
+{ "name": "Delete category", "request": { "method": "DELETE", "url": "{{base_url}}/api/v1/categories/:category_id" } }
+]
+},
+{
+"name": "Reviews",
+"item": [
+{ "name": "List reviews for book", "request": { "method": "GET", "url": "{{base_url}}/api/v1/books/:book_id/reviews?skip=0&limit=10" } },
+{ "name": "Get review by ID", "request": { "method": "GET", "url": "{{base_url}}/api/v1/reviews/:review_id" } },
+{ "name": "Create review", "request": { "method": "POST", "url": "{{base_url}}/api/v1/reviews" } },
+{ "name": "Update review", "request": { "method": "PUT", "url": "{{base_url}}/api/v1/reviews/:review_id" } },
+{ "name": "Delete review", "request": { "method": "DELETE", "url": "{{base_url}}/api/v1/reviews/:review_id" } }
+]
+},
+{
+"name": "Favorites",
+"item": [
+{ "name": "List favorite books", "request": { "method": "GET", "url": "{{base_url}}/api/v1/users/me/favorites" } },
+{ "name": "Add book to favorites", "request": { "method": "POST", "url": "{{base_url}}/api/v1/books/:book_id/favorite" } },
+{ "name": "Remove book from favorites", "request": { "method": "DELETE", "url": "{{base_url}}/api/v1/books/:book_id/favorite" } }
+]
+},
+{
+"name": "Stats",
+"item": [
+{ "name": "Get aggregate stats", "request": { "method": "GET", "url": "{{base_url}}/api/v1/stats" } }
+]
+}
+]
+}
