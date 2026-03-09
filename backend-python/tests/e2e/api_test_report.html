@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html><head><title>Full API Master Test Report</title>
+<style>
+    body { font-family: Arial, sans-serif; margin: 40px; background-color: #f4f4f9; }
+    h1 { color: #333; }
+    .summary { display: flex; gap: 20px; margin: 20px 0; }
+    .summary .card { padding: 15px 25px; border-radius: 8px; color: white; font-size: 18px; font-weight: bold; }
+    .summary .total { background-color: #2c3e50; }
+    .summary .pass { background-color: #27ae60; }
+    .summary .fail { background-color: #c0392b; }
+    .summary .rate { background-color: #2980b9; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; background-color: #fff; }
+    th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; font-size: 14px; }
+    th { background-color: #2c3e50; color: white; }
+    td { max-width: 400px; word-wrap: break-word; }
+    .PASS { color: #27ae60; font-weight: bold; }
+    .FAIL { color: #c0392b; font-weight: bold; }
+    .section-header td { background-color: #ecf0f1; font-weight: bold; font-size: 15px; color: #2c3e50; }
+</style></head><body>
+<h1>🚀 Full API Master Test Report</h1>
+<p><strong>Generated:</strong> 2026-03-09 16:18:30</p>
+<div class="summary">
+    <div class="card total">Total: 97</div>
+    <div class="card pass">Passed: 97</div>
+    <div class="card fail">Failed: 0</div>
+    <div class="card rate">Pass Rate: 100.0%</div>
+</div>
+<table>
+<tr><th>Test Name</th><th>Method</th><th>Endpoint</th><th>Result</th><th>Details</th></tr>
+<tr class="section-header"><td colspan="5">📋 System Health</td></tr>
+<tr><td>Root Endpoint</td><td>GET</td><td>/</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Health Check</td><td>GET</td><td>/health</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr class="section-header"><td colspan="5">📋 Authentication — Registration</td></tr>
+<tr><td>Register New User</td><td>POST</td><td>/api/v1/auth/register</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Register Second User</td><td>POST</td><td>/api/v1/auth/register</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Register Duplicate Email (400)</td><td>POST</td><td>/api/v1/auth/register</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Register Weak Password (422)</td><td>POST</td><td>/api/v1/auth/register</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Register Invalid Email (422)</td><td>POST</td><td>/api/v1/auth/register</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr class="section-header"><td colspan="5">📋 Authentication — Login</td></tr>
+<tr><td>Login Admin</td><td>POST</td><td>/api/v1/auth/login</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Login Standard User</td><td>POST</td><td>/api/v1/auth/login</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Login Second User</td><td>POST</td><td>/api/v1/auth/login</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr class="section-header"><td colspan="5">📋 Authentication — Profile</td></tr>
+<tr><td>Get Admin Profile (GET /auth/me)</td><td>GET</td><td>/api/v1/auth/me</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Get User Profile (GET /auth/me)</td><td>GET</td><td>/api/v1/auth/me</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Get Profile Without Auth (401)</td><td>GET</td><td>/api/v1/auth/me</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Update Profile Email (PUT /auth/me)</td><td>PUT</td><td>/api/v1/auth/me</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Update Profile Without Current Password (400)</td><td>PUT</td><td>/api/v1/auth/me</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Re-Login User2 After Email Change</td><td>POST</td><td>/api/v1/auth/login</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr class="section-header"><td colspan="5">📋 Authentication — Login Negative Tests</td></tr>
+<tr><td>Login Wrong Password (401)</td><td>POST</td><td>/api/v1/auth/login</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Login Non-Existent User (401)</td><td>POST</td><td>/api/v1/auth/login</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr class="section-header"><td colspan="5">📋 User Management (Admin Only)</td></tr>
+<tr><td>List All Users (Admin)</td><td>GET</td><td>/api/v1/users</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>List Users as Standard User (403)</td><td>GET</td><td>/api/v1/users</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Get User by ID (Admin)</td><td>GET</td><td>/api/v1/users/11</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Get Non-Existent User (404)</td><td>GET</td><td>/api/v1/users/99999</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Get User by ID as Standard User (403)</td><td>GET</td><td>/api/v1/users/11</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Promote User2 to Admin</td><td>PATCH</td><td>/api/v1/users/12/role</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Demote User2 Back to User</td><td>PATCH</td><td>/api/v1/users/12/role</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Update Role as Standard User (403)</td><td>PATCH</td><td>/api/v1/users/12/role</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Update Role Non-Existent User (404)</td><td>PATCH</td><td>/api/v1/users/99999/role</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr class="section-header"><td colspan="5">📋 Authors — CRUD</td></tr>
+<tr><td>Create Author (Admin)</td><td>POST</td><td>/api/v1/authors</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Create Second Author (Admin)</td><td>POST</td><td>/api/v1/authors</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Create Author as Standard User (403)</td><td>POST</td><td>/api/v1/authors</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>List All Authors</td><td>GET</td><td>/api/v1/authors</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Get Author by ID</td><td>GET</td><td>/api/v1/authors/10</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Get Non-Existent Author (404)</td><td>GET</td><td>/api/v1/authors/99999</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Update Author (Admin)</td><td>PUT</td><td>/api/v1/authors/10</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Update Author as Standard User (403)</td><td>PUT</td><td>/api/v1/authors/10</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Update Non-Existent Author (404)</td><td>PUT</td><td>/api/v1/authors/99999</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr class="section-header"><td colspan="5">📋 Categories — CRUD</td></tr>
+<tr><td>Create Category (Admin)</td><td>POST</td><td>/api/v1/categories</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Create Second Category (Admin)</td><td>POST</td><td>/api/v1/categories</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Create Category as Standard User (403)</td><td>POST</td><td>/api/v1/categories</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Create Duplicate Category (400)</td><td>POST</td><td>/api/v1/categories</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>List All Categories</td><td>GET</td><td>/api/v1/categories</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Get Category by ID</td><td>GET</td><td>/api/v1/categories/14</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Get Non-Existent Category (404)</td><td>GET</td><td>/api/v1/categories/99999</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Update Category (Admin)</td><td>PUT</td><td>/api/v1/categories/14</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Update Category as Standard User (403)</td><td>PUT</td><td>/api/v1/categories/14</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Update Non-Existent Category (404)</td><td>PUT</td><td>/api/v1/categories/99999</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr class="section-header"><td colspan="5">📋 Books — CRUD</td></tr>
+<tr><td>Create Book (Admin)</td><td>POST</td><td>/api/v1/books</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Create Book as Standard User (403)</td><td>POST</td><td>/api/v1/books</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Create Book Duplicate ISBN (400)</td><td>POST</td><td>/api/v1/books</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Create Book Invalid Author (404)</td><td>POST</td><td>/api/v1/books</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Create Book Invalid Category (404)</td><td>POST</td><td>/api/v1/books</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>List Books (Page 1)</td><td>GET</td><td>/api/v1/books</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Search Books by Title</td><td>GET</td><td>/api/v1/books</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Filter Books by Author</td><td>GET</td><td>/api/v1/books</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Get Book by ID</td><td>GET</td><td>/api/v1/books/10</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Get Non-Existent Book (404)</td><td>GET</td><td>/api/v1/books/99999</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Update Book (Admin)</td><td>PUT</td><td>/api/v1/books/10</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Update Book as Non-Owner User (403)</td><td>PUT</td><td>/api/v1/books/10</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Update Non-Existent Book (404)</td><td>PUT</td><td>/api/v1/books/99999</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Update Book Categories (Admin)</td><td>PUT</td><td>/api/v1/books/10/categories</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Update Book Categories Invalid (404)</td><td>PUT</td><td>/api/v1/books/10/categories</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr class="section-header"><td colspan="5">📋 Reviews — CRUD</td></tr>
+<tr><td>Create Review (Standard User)</td><td>POST</td><td>/api/v1/reviews</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Review Own Book (400)</td><td>POST</td><td>/api/v1/reviews</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Duplicate Review (400)</td><td>POST</td><td>/api/v1/reviews</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Review Non-Existent Book (404)</td><td>POST</td><td>/api/v1/reviews</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Review Without Auth (401)</td><td>POST</td><td>/api/v1/reviews</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Get Book Reviews</td><td>GET</td><td>/api/v1/books/10/reviews</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Get Reviews Non-Existent Book (404)</td><td>GET</td><td>/api/v1/books/99999/reviews</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Get Review by ID</td><td>GET</td><td>/api/v1/reviews/6</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Get Non-Existent Review (404)</td><td>GET</td><td>/api/v1/reviews/99999</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Update Review (Owner)</td><td>PUT</td><td>/api/v1/reviews/6</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Update Review as Non-Owner (403)</td><td>PUT</td><td>/api/v1/reviews/6</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Update Non-Existent Review (404)</td><td>PUT</td><td>/api/v1/reviews/99999</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr class="section-header"><td colspan="5">📋 Favorites</td></tr>
+<tr><td>Add Book to Favorites</td><td>POST</td><td>/api/v1/books/10/favorite</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Add Duplicate Favorite (400)</td><td>POST</td><td>/api/v1/books/10/favorite</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Favorite Non-Existent Book (404)</td><td>POST</td><td>/api/v1/books/99999/favorite</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Favorite Without Auth (401)</td><td>POST</td><td>/api/v1/books/10/favorite</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>List My Favorites</td><td>GET</td><td>/api/v1/users/me/favorites</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>User2 Add Favorite</td><td>POST</td><td>/api/v1/books/10/favorite</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>User2 List Favorites</td><td>GET</td><td>/api/v1/users/me/favorites</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr class="section-header"><td colspan="5">📋 Statistics</td></tr>
+<tr><td>Get Store Stats</td><td>GET</td><td>/api/v1/stats</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr class="section-header"><td colspan="5">📋 Delete Constraints & Negative Tests</td></tr>
+<tr><td>Delete Author with Books (409)</td><td>DELETE</td><td>/api/v1/authors/10</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Delete Book as Standard User (403)</td><td>DELETE</td><td>/api/v1/books/10</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Delete Non-Existent Author (404)</td><td>DELETE</td><td>/api/v1/authors/99999</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Delete Non-Existent Category (404)</td><td>DELETE</td><td>/api/v1/categories/99999</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Delete Non-Existent Book (404)</td><td>DELETE</td><td>/api/v1/books/99999</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Delete Non-Existent Review (404)</td><td>DELETE</td><td>/api/v1/reviews/99999</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Delete Review as Non-Owner (403)</td><td>DELETE</td><td>/api/v1/reviews/6</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Remove Non-Favorited Book (404)</td><td>DELETE</td><td>/api/v1/books/99999/favorite</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr class="section-header"><td colspan="5">📋 Teardown / Cleanup</td></tr>
+<tr><td>Delete Review</td><td>DELETE</td><td>/api/v1/reviews/6</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Remove User1 Favorite</td><td>DELETE</td><td>/api/v1/books/10/favorite</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Remove User2 Favorite</td><td>DELETE</td><td>/api/v1/books/10/favorite</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Delete Book</td><td>DELETE</td><td>/api/v1/books/10</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Delete Author</td><td>DELETE</td><td>/api/v1/authors/10</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Delete Second Author</td><td>DELETE</td><td>/api/v1/authors/11</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Delete Category</td><td>DELETE</td><td>/api/v1/categories/14</td><td class='PASS'>PASS</td><td>Success</td></tr>
+<tr><td>Delete Second Category</td><td>DELETE</td><td>/api/v1/categories/15</td><td class='PASS'>PASS</td><td>Success</td></tr>
+
+</table>
+</body></html>
