@@ -19,6 +19,7 @@ REPORT_PATH = os.path.join(SCRIPT_DIR, "api_test_report.html")
 
 # --- CONFIGURATION ---
 BASE_URL = "http://localhost:8000"
+REQUEST_TIMEOUT = 10  # seconds — prevents indefinite hangs on stalled connections
 API_URL = f"{BASE_URL}/api/v1"
 ADMIN_EMAIL = "boss@example.com"
 ADMIN_PASSWORD = "TestPassword123!"
@@ -56,7 +57,7 @@ def run_test(name, method, path, expected_status, headers=None, json_data=None, 
     """
     url = f"{BASE_URL}{path}"
     try:
-        kwargs = {"headers": headers}
+        kwargs = {"headers": headers, "timeout": REQUEST_TIMEOUT}
         if json_data is not None:
             kwargs["json"] = json_data
         if params is not None:
