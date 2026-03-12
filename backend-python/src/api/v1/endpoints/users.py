@@ -68,9 +68,10 @@ async def update_user_role(
     
     # Prevent demoting the last admin
     if user.role == UserRole.ADMIN and role_update.role == UserRole.USER:
-        # Use with_for_update() to lock rows and prevent race conditions
-        # We query for IDs to minimize data transfer while still acquiring the locks
-        admin_count = db.query(User.id).filter(User.role == UserRole.ADMIN).with_for_update().count()
+        # Lock admin rows with FOR UPDATE to prevent race conditions,
+        # then count in Python (PostgreSQL doesn't allow FOR UPDATE with aggregates)
+        admin_rows = db.query(User.id).filter(User.role == UserRole.ADMIN).with_for_update().all()
+        admin_count = len(admin_rows)
         if admin_count <= 1:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,

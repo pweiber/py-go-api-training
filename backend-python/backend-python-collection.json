@@ -1,0 +1,262 @@
+{
+  "info": {
+    "name": "Backend Python API",
+    "description": "Imported from endpoints.md",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      { "key": "token", "value": "{{jwt_token}}", "type": "string" }
+    ]
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8000", "type": "string" },
+    { "key": "jwt_token", "value": "", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "Root / Health",
+      "item": [
+        { "name": "Root welcome message", "request": { "method": "GET", "url": "{{base_url}}/" } },
+        { "name": "Health check", "request": { "method": "GET", "url": "{{base_url}}/health" } }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/api/v1/auth/register",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"TestPassword123!\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "Login",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/api/v1/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"TestPassword123!\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "Get Profile",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/v1/auth/me"
+          }
+        },
+        {
+          "name": "Update Profile",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/api/v1/auth/me",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"newemail@example.com\",\n  \"current_password\": \"TestPassword123!\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        { "name": "List users", "request": { "method": "GET", "url": "{{base_url}}/api/v1/users?skip=0&limit=10" } },
+        { "name": "Get user by ID", "request": { "method": "GET", "url": "{{base_url}}/api/v1/users/:user_id" } },
+        {
+          "name": "Update user role",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/api/v1/users/:user_id/role",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"admin\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Books",
+      "item": [
+        { "name": "List books", "request": { "method": "GET", "url": "{{base_url}}/api/v1/books?page=1&size=10" } },
+        { "name": "Get book by ID", "request": { "method": "GET", "url": "{{base_url}}/api/v1/books/:book_id" } },
+        {
+          "name": "Create book",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/api/v1/books",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"The Python Guide\",\n  \"isbn\": \"978-0-123456-78-9\",\n  \"published_date\": \"2026-01-15\",\n  \"description\": \"A comprehensive guide to Python programming\",\n  \"author_ids\": [1],\n  \"category_ids\": [1]\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "Update book",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/api/v1/books/:book_id",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Updated book description\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        { "name": "Delete book", "request": { "method": "DELETE", "url": "{{base_url}}/api/v1/books/:book_id" } },
+        {
+          "name": "Replace book categories",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/api/v1/books/:book_id/categories",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"category_ids\": [1, 2]\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Authors",
+      "item": [
+        { "name": "List authors", "request": { "method": "GET", "url": "{{base_url}}/api/v1/authors" } },
+        { "name": "Get author by ID", "request": { "method": "GET", "url": "{{base_url}}/api/v1/authors/:author_id" } },
+        {
+          "name": "Create author",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/api/v1/authors",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"J.K. Rowling\",\n  \"bio\": \"British author best known for the Harry Potter series\",\n  \"birth_date\": \"1965-07-31\",\n  \"nationality\": \"British\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "Update author",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/api/v1/authors/:author_id",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bio\": \"Updated biography text\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        { "name": "Delete author", "request": { "method": "DELETE", "url": "{{base_url}}/api/v1/authors/:author_id" } }
+      ]
+    },
+    {
+      "name": "Categories",
+      "item": [
+        { "name": "List categories", "request": { "method": "GET", "url": "{{base_url}}/api/v1/categories" } },
+        { "name": "Get category by ID", "request": { "method": "GET", "url": "{{base_url}}/api/v1/categories/:category_id" } },
+        {
+          "name": "Create category",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/api/v1/categories",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Fantasy\",\n  \"description\": \"Fantasy and magical fiction books\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "Update category",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/api/v1/categories/:category_id",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Updated category description\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        { "name": "Delete category", "request": { "method": "DELETE", "url": "{{base_url}}/api/v1/categories/:category_id" } }
+      ]
+    },
+    {
+      "name": "Reviews",
+      "item": [
+        { "name": "List reviews for book", "request": { "method": "GET", "url": "{{base_url}}/api/v1/books/:book_id/reviews?skip=0&limit=10" } },
+        { "name": "Get review by ID", "request": { "method": "GET", "url": "{{base_url}}/api/v1/reviews/:review_id" } },
+        {
+          "name": "Create review",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/api/v1/reviews",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"book_id\": 1,\n  \"rating\": 5,\n  \"comment\": \"An excellent read! Highly recommended.\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "Update review",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/api/v1/reviews/:review_id",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rating\": 4,\n  \"comment\": \"Updated review comment\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        { "name": "Delete review", "request": { "method": "DELETE", "url": "{{base_url}}/api/v1/reviews/:review_id" } }
+      ]
+    },
+    {
+      "name": "Favorites",
+      "item": [
+        { "name": "List favorite books", "request": { "method": "GET", "url": "{{base_url}}/api/v1/users/me/favorites" } },
+        { "name": "Add book to favorites", "request": { "method": "POST", "url": "{{base_url}}/api/v1/books/:book_id/favorite" } },
+        { "name": "Remove book from favorites", "request": { "method": "DELETE", "url": "{{base_url}}/api/v1/books/:book_id/favorite" } }
+      ]
+    },
+    {
+      "name": "Stats",
+      "item": [
+        { "name": "Get aggregate stats", "request": { "method": "GET", "url": "{{base_url}}/api/v1/stats" } }
+      ]
+    }
+  ]
+}

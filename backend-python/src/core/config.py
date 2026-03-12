@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     API_VERSION: str = "v1"
 
     # Database
-    DATABASE_URL: str = "postgresql://postgres:devpassword@localhost:5432/bookstore"
+    DATABASE_URL: str = "postgresql://postgres:devpassword@localhost:5433/bookstore"
 
     # Security
     SECRET_KEY: str = "your-secret-key-change-in-production"

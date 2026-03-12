@@ -1,0 +1,16 @@
+[tool.pytest.ini_options]
+addopts = "--cov=src --cov-report=term-missing --cov-report=html"
+pythonpath = ["."]
+testpaths = ["tests"]
+
+[tool.coverage.run]
+source = ["src"]
+omit = [
+    "*/tests/*",
+    "*/__pycache__/*",
+    "src/core/config.py"  # Often excluded as it's just env var mapping
+]
+
+[tool.coverage.report]
+fail_under = 90
+show_missing = true
